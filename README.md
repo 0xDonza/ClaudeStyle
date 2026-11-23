@@ -1,10 +1,7 @@
+# 🎨 ClaudeStyle
+
 **Make the Claude desktop app look the way *you* want.**
 Add your own wallpaper, frosted-glass panels, new fonts and colours, all from a panel built right into Claude.
-
-Im pretty new to all of this and this is all vibe coded slop xD, ill try make some updates as i go as this is something ive been wanting
-for awhile but couldnt find anything online
-
-<img width="1617" height="955" alt="image" src="https://github.com/user-attachments/assets/aa5f77d6-d875-4b26-a4e0-acca242a2ad0" />
 
 ---
 
@@ -94,12 +91,3 @@ First check that **Developer → Enable Main Process Debugger** is ticked in Cla
 
 *ClaudeStyle is a fan-made project and isn't made by or affiliated with Anthropic.
 The bundled fonts are free fonts under the SIL Open Font License (see `FONT-LICENSES.txt`).*
-
-## 🖼️ Tabs Showcase
-
-<img width="3200" height="1800" alt="image" src="https://github.com/user-attachments/assets/d96f7ac1-d485-467d-b074-db937461b217" />
-<img width="1456" height="819" alt="image" src="https://github.com/user-attachments/assets/339a5704-f4b6-469c-a401-8e9363511e82" />
-<img width="3200" height="1800" alt="image" src="https://github.com/user-attachments/assets/6344d1ce-d622-4ede-bd66-499f5dcfca2e" />
-<img width="1456" height="819" alt="image" src="https://github.com/user-attachments/assets/2b130f9f-e528-4446-b60f-45029edd3258" />
-<img width="1456" height="819" alt="image" src="https://github.com/user-attachments/assets/d69326ab-f61d-44ac-a0d6-0b0eb4bafd76" />
-

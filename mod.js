@@ -220,7 +220,8 @@
     const known = touched.get(el);
     if (known) { touch(el, known.mode); return inTint || known.mode === 'tint'; }
     const cs = getComputedStyle(el);
-    const covers = cs.position !== 'fixed' || (r.width >= vw * 0.9 && r.height >= vh * 0.9);
+    const edgeBar = r.width >= vw * 0.55 && (r.top <= 3 || r.bottom >= vh - 3) && r.height <= vh * 0.2;
+    const covers = cs.position !== 'fixed' || edgeBar || (r.width >= vw * 0.9 && r.height >= vh * 0.9);
     const solid = covers && alphaOf(cs.backgroundColor) > 0.6;
     const gradImg = covers && /gradient\(/.test(cs.backgroundImage) && !/url\(/.test(cs.backgroundImage);
     const side = !inTint && el.tagName !== 'NAV' && r.width < vw * 0.35 && r.height >= vh * 0.6 && (r.left <= 4 || r.right >= vw - 4);
