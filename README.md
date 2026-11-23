@@ -1,6 +1,9 @@
 **Make the Claude desktop app look the way *you* want.**
 Add your own wallpaper, frosted-glass panels, new fonts and colours, all from a panel built right into Claude.
 
+Im pretty new to all of this and this is all vibe coded slop xD, ill try make some updates as i go as this is something ive been wanting
+for awhile but couldnt find anything online
+
 <img width="1617" height="955" alt="image" src="https://github.com/user-attachments/assets/aa5f77d6-d875-4b26-a4e0-acca242a2ad0" />
 
 ---
