@@ -108,8 +108,8 @@ The bundled fonts are free fonts under the SIL Open Font License (see `FONT-LICE
 ## ✨ Buy Me A Coffee
 
 Feel free to donate this is a free project of mine and im happy to help!
-btc: bc1qvxalp6cj8xe7pemxepgtnpw9l0mq46m5avgrm7
-eth: 0xe01212d062Db453657E10aa37C8c93726154c1a2
-sol: 2CTYC4YquksKNCRS9Tw8mHVEEJS1XLR1SCWtZtX9T6fg
+- btc: bc1qvxalp6cj8xe7pemxepgtnpw9l0mq46m5avgrm7
+- eth: 0xe01212d062Db453657E10aa37C8c93726154c1a2
+- sol: 2CTYC4YquksKNCRS9Tw8mHVEEJS1XLR1SCWtZtX9T6fg
 
 ---
