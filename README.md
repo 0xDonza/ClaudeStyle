@@ -11,7 +11,6 @@ for awhile but couldnt find anything online
 ## ✨ What you can do
 
 | | |
-|---|---|
 | 🖼️ **Backdrop** | Use any picture as your wallpaper (just drag it in), or pick one of 8 gradients. Darken it, blur it, or turn the colour up or down. |
 | 🎭 **Themes** | 8 one-click looks: Glass Night, Aurora, Sunset, Sakura, Ocean, Terminal, Cozy and Playful. |
 | 🪟 **Style** | Frosted-glass panels, an accent colour, rounder or squarer message box, slim scrollbars. |
