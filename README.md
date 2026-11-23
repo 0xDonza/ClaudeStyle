@@ -103,3 +103,11 @@ The bundled fonts are free fonts under the SIL Open Font License (see `FONT-LICE
 <img width="1456" height="819" alt="image" src="https://github.com/user-attachments/assets/2b130f9f-e528-4446-b60f-45029edd3258" />
 <img width="1456" height="819" alt="image" src="https://github.com/user-attachments/assets/d69326ab-f61d-44ac-a0d6-0b0eb4bafd76" />
 
+---
+
+## ✨ Buy Me A Coffee
+Feel free to donate this is a free project of mine and im happy to help!
+
+btc: bc1qvxalp6cj8xe7pemxepgtnpw9l0mq46m5avgrm7
+eth: 0xe01212d062Db453657E10aa37C8c93726154c1a2
+sol: 2CTYC4YquksKNCRS9Tw8mHVEEJS1XLR1SCWtZtX9T6fg
