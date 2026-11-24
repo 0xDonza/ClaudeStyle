@@ -5,8 +5,6 @@ Add your own wallpaper, frosted-glass panels, new fonts and colours, all from a 
 
 <img width="1617" height="955" alt="ClaudeStyle in the Claude desktop app" src="https://github.com/user-attachments/assets/aa5f77d6-d875-4b26-a4e0-acca242a2ad0" />
 
-### [⬇️ Download the latest version](https://github.com/0xDonza/ClaudeStyle-Custom-Addon/releases/latest)
-
 ---
 
 ## ✨ What you can do
