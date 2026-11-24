@@ -3,9 +3,8 @@
 **Make the Claude desktop app look the way *you* want.**
 Add your own wallpaper, frosted-glass panels, new fonts and colours, all from a panel built right into Claude.
 
-<img width="1617" height="955" alt="ClaudeStyle in the Claude desktop app" src="https://github.com/user-attachments/assets/aa5f77d6-d875-4b26-a4e0-acca242a2ad0" />
+<img width="1444" height="853" alt="image" src="https://github.com/user-attachments/assets/80b31d7b-3d40-4bc3-ad12-ceda768773ca" />
 
-### [⬇️ Download the latest version](https://github.com/0xDonza/ClaudeStyle-Custom-Addon/releases/latest)
 
 ---
 
@@ -15,11 +14,11 @@ Add your own wallpaper, frosted-glass panels, new fonts and colours, all from a 
 |---|---|
 | 🖼️ **Backdrop** | Use any picture as your wallpaper (just drag it in), or pick one of 8 gradients. Darken it, blur it, or turn the colour up or down. |
 | 🎭 **Themes** | 8 one-click looks: Glass Night, Aurora, Sunset, Sakura, Ocean, Terminal, Cozy and Playful. |
-| 🪟 **Style** | Frosted-glass panels, dark readable popups (Search, menus), a message box background you can switch on or off and recolour, an accent colour, slim scrollbars. |
+| 🪟 **Style** | Frosted-glass panels and message box, dark readable popups (Search, menus), an accent colour, rounder or squarer corners, slim scrollbars. |
 | 🔤 **Fonts** | 10 fonts built in (Inter, Nunito, Poppins, Outfit and more), or any font on your PC. Your code font can be different too. |
 | 🧩 **Extras** | Write your own CSS, share themes with friends (copy and paste), move and resize the panel. |
 
-Open the panel with the 🎨 button in the message box (next to the **+**), or press **Ctrl + Shift + Y** on any page. Under **More** you can move the button to the sidebar or the top toolbar, make it floating, or hide it.
+Open the panel with the 🎨 button in the message box (next to the **+**), or press **Ctrl + Shift + Y** on any page.
 
 ---
 
@@ -41,13 +40,24 @@ That's it. From now on, **just open Claude normally**. ClaudeStyle starts with W
 
 ---
 
+## 🎨 How to open ClaudeStyle
+
+| Where | How |
+|---|---|
+| **Any page** | Press **Ctrl + Shift + Y**. |
+| **In a chat** | Click the 🎨 button in the message box, right next to the **+**. |
+
+Want the button somewhere else? Open the panel, go to **More**, and pick **Sidebar**, **Toolbar**, **Floating** or **Hidden**.
+
+---
+
 ## 🎛️ Using the panel
 
 | Tab | What's there |
 |---|---|
 | **Themes** | One-click looks. Click one and you're done. Changed your mind? Click **Undo**. |
 | **Backdrop** | Choose **Image**, **Gradient** or **None**. Drag a picture onto the box to use it. |
-| **Style** | Panel colour and glass, **Dark popups**, **Smart glass**, **Message box** (background on/off, colour, strength, roundness), accent colour, and **Reduce effects**. |
+| **Style** | Panel colour, see-through amount, glass blur, **Dark popups**, **Smart glass**, **Message box** (background on/off, colour, strength), accent colour, and **Reduce effects**. |
 | **Text** | Pick a font. Each one shows a preview in its own style. |
 | **More** | Quick CSS, copy or paste themes, where the 🎨 button lives, turn off, debug info, and reset. |
 
@@ -55,18 +65,6 @@ That's it. From now on, **just open Claude normally**. ClaudeStyle starts with W
 - **Resize the panel:** drag its bottom-right corner.
 - **Put it back:** double-click the title (position) or the corner (size).
 - **Close the panel:** press **Esc**.
-
----
-
-## 📸 Screenshots
-
-| Themes | Backdrop |
-|---|---|
-| ![Themes tab](screenshots/claudestyle-1-themes.png) | ![Backdrop tab](screenshots/claudestyle-2-backdrop.png) |
-| **Style** | **Text** |
-| ![Style tab](screenshots/claudestyle-3-style.png) | ![Text tab](screenshots/claudestyle-4-text.png) |
-
-![More tab](screenshots/claudestyle-5-more.png)
 
 ---
 
@@ -90,10 +88,8 @@ Yes, until you turn it off (More → Turn off ClaudeStyle) or uninstall it. Your
 Usually nothing. ClaudeStyle doesn't change any of Claude's files, so updates can't break or erase it. If an update changes Claude's layout, a grey patch might come back or the 🎨 button might sit somewhere odd. You can still open the panel with **Ctrl + Shift + Y**, or move the button under **More**.
 
 **Will it slow Claude down?**
-It's built to stay light: it only does its checks when Claude is idle, pauses completely while Claude is minimised, keeps your wallpaper at your screen's size, and uses **Smart glass** (one pre-blurred copy of the wallpaper instead of live blur). If things ever feel sluggish, turn on **Style → Reduce effects** to switch off the blur.
+It's built to stay light: it only does its checks when Claude is idle, pauses while Claude is minimised, keeps your wallpaper at your screen's size, and uses **Smart glass** (one pre-blurred copy of the wallpaper instead of live blur). If things ever feel sluggish, turn on **Style → Reduce effects** to switch off the blur.
 
-**Is it safe?**
-ClaudeStyle only changes how Claude *looks*. It doesn't read your chats or send anything anywhere. It uses Claude's own Developer menu to get in, and while that's switched on, other programs on your PC could connect to Claude the same way. Turn ClaudeStyle off (and untick the menu item) if you don't want that.
 
 **Something looks wrong?**
 First check that Developer Mode is on and **Developer → Enable Main Process Debugger** is ticked in Claude. Still stuck? Open the panel, go to **More → Copy debug info**, and paste it into a [new issue](https://github.com/0xDonza/ClaudeStyle-Custom-Addon/issues). It only contains layout details, never your chats.
@@ -107,6 +103,23 @@ First check that Developer Mode is on and **Developer → Enable Main Process De
 - Log file: `%LOCALAPPDATA%\ClaudeStyle\log.txt`
 
 ---
+
+## 🖼️ Tabs Showcase
+
+<img width="3200" height="1800" alt="image" src="https://github.com/user-attachments/assets/d96f7ac1-d485-467d-b074-db937461b217" />
+<img width="1456" height="819" alt="image" src="https://github.com/user-attachments/assets/339a5704-f4b6-469c-a401-8e9363511e82" />
+<img width="3200" height="1800" alt="image" src="https://github.com/user-attachments/assets/6344d1ce-d622-4ede-bd66-499f5dcfca2e" />
+<img width="1456" height="819" alt="image" src="https://github.com/user-attachments/assets/2b130f9f-e528-4446-b60f-45029edd3258" />
+<img width="1456" height="819" alt="image" src="https://github.com/user-attachments/assets/d69326ab-f61d-44ac-a0d6-0b0eb4bafd76" />
+
+---
+
+## ✨ Buy Me A Coffee
+Feel free to donate this is a free project of mine and im happy to help!
+
+- btc: bc1qvxalp6cj8xe7pemxepgtnpw9l0mq46m5avgrm7
+- eth: 0xe01212d062Db453657E10aa37C8c93726154c1a2
+- sol: 2CTYC4YquksKNCRS9Tw8mHVEEJS1XLR1SCWtZtX9T6fg
 
 *Made by **Donza**. ClaudeStyle is a fan-made project and isn't made by or affiliated with Anthropic.
 The bundled fonts are free fonts under the SIL Open Font License (see `FONT-LICENSES.txt`).*
