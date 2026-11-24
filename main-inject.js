@@ -28,8 +28,42 @@
   // Palette button for the window's toolbar. Built without innerHTML so strict pages accept it.
   // A click is passed on through the console (the main process listens and opens the panel in the chat).
   const FRAME = `(() => {
-    if (window.__csShell) { window.__csShell.ensure(); return; }
-    let tb = null, mode = 'toolbar';
+    if (window.__csShell && window.__csShell.v === 2) { window.__csShell.ensure(); return; }
+    if (window.__csShell) { try { window.__csShell.remove(); } catch (e) {} }   // an older copy: replace it
+    let tb = null, sb = null, mode = 'toolbar';
+    const NAMES = ['plugins', 'scheduled', 'artifacts', 'projects', 'code', 'search'];
+    const firstText = el => { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let t; while ((t = w.nextNode())) { const v = t.nodeValue.trim(); if (v) return v.toLowerCase(); } return String(el.getAttribute('aria-label') || '').trim().toLowerCase(); };
+    // "ClaudeStyle" item in the window's own left sidebar, copied from Claude's items (Plugins, Scheduled...)
+    function ensureSide() {
+      if (sb && sb.isConnected) { const r = sb.getBoundingClientRect(); return r.width > 0 && r.height > 0; }
+      let ref = null, best = 99;
+      for (const el of document.querySelectorAll('a, button, [role="link"], [role="button"], [role="menuitem"]')) {
+        if (el.closest('#claude-style-sb')) continue;
+        const i = NAMES.indexOf(firstText(el)); if (i < 0 || i >= best) continue;
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height || r.left > innerWidth * 0.4 || r.width < 90) continue;
+        if (el.querySelector('a, button, [role="link"], [role="button"]')) continue;
+        ref = el; best = i;
+      }
+      if (!ref) return false;
+      let anchor = ref;
+      while (anchor.parentElement && anchor.parentElement.children.length === 1 && !/^(NAV|UL|OL|BODY)$/.test(anchor.parentElement.tagName)) anchor = anchor.parentElement;
+      const copy = anchor.cloneNode(true);
+      const item = anchor === ref ? copy : (copy.querySelector(ref.tagName.toLowerCase()) || copy);
+      [copy].concat(Array.from(copy.querySelectorAll('*'))).forEach(el => ['id', 'href', 'aria-current', 'data-active', 'aria-selected', 'aria-describedby', 'aria-controls'].forEach(a => el.removeAttribute(a)));
+      copy.id = 'claude-style-sb';
+      item.setAttribute('role', 'button'); item.setAttribute('tabindex', '0'); item.setAttribute('aria-label', 'ClaudeStyle'); item.title = 'ClaudeStyle (Ctrl+Shift+Y)';
+      const w = document.createTreeWalker(item, NodeFilter.SHOW_TEXT); let t, named = false;
+      while ((t = w.nextNode())) { const v = t.nodeValue.trim(); if (!v) continue; if (!named) { t.nodeValue = t.nodeValue.replace(v, 'ClaudeStyle'); named = true; } else t.nodeValue = ''; }
+      const old = item.querySelector('svg'), rs = ref.querySelector('svg');
+      if (old) { const n = icon(rs ? Math.round(rs.getBoundingClientRect().width) || 18 : 18); if (old.getAttribute('class')) n.setAttribute('class', old.getAttribute('class')); old.replaceWith(n); }
+      const go = e => { e.preventDefault(); e.stopPropagation(); console.log('__claudestyle:toggle'); };
+      item.addEventListener('click', go, true);
+      item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') go(e); }, true);
+      anchor.after(copy); sb = copy;
+      console.log('__claudestyle:frame-ok');
+      return true;
+    }
     const NS = 'http://www.w3.org/2000/svg';
     function icon(size) {
       const s = document.createElementNS(NS, 'svg');
@@ -50,7 +84,9 @@
       return out.sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
     }
     function ensure() {
-      if (mode !== 'toolbar') { if (tb && tb.isConnected) tb.remove(); return; }
+      if (mode !== 'sidebar-frame' && sb && sb.isConnected) sb.remove();
+      if (mode === 'sidebar-frame' && ensureSide()) { if (tb && tb.isConnected) tb.remove(); return; }
+      if (mode !== 'toolbar' && mode !== 'sidebar-frame') { if (tb && tb.isConnected) tb.remove(); return; }
       if (tb && tb.isConnected) return;
       const btns = buttons();
       const lab = b => String(b.getAttribute('aria-label') || b.title || '').toLowerCase();
@@ -74,7 +110,7 @@
       console.log('__claudestyle:frame-ok');
     }
     const iv = setInterval(ensure, 1500);
-    window.__csShell = { ensure, mode(m) { mode = m; ensure(); }, remove() { clearInterval(iv); if (tb) tb.remove(); delete window.__csShell; } };
+    window.__csShell = { v: 2, ensure, mode(m) { mode = m; ensure(); }, remove() { clearInterval(iv); if (tb) tb.remove(); if (sb) sb.remove(); delete window.__csShell; } };
     ensure();
   })()`;
 
