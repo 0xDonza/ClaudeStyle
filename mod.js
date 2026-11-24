@@ -6,7 +6,7 @@
   const DKEY = 'claudeStyleDisabled';   // set when you turn ClaudeStyle off from its panel
   const APPVER = '1.2.0';                 // the release number people see (match the GitHub release tag)
   const REPO = 'https://github.com/0xDonza/ClaudeStyle-Custom-Addon';
-  const VER = '20fda52960';                // changes with every build, so a newer copy can replace an older one
+  const VER = '89724da989';                // changes with every build, so a newer copy can replace an older one
 
   // ---------------------------------------------------------------- "off" mode
   // Nothing is shown and Claude looks normal. Ctrl+Shift+Y shows a small note with a "Turn on" button.
@@ -215,7 +215,7 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
   // made by ClaudeStyle itself; that's checked once, and live glass is used if it isn't allowed.
   let smartOK = null, glassUrl = '', glassKey = '', glassTimer = 0;
   let cb = null;   // the palette button in the message box (see mountComposerBtn)
-  const noSpot = new WeakSet();
+  const noSpot = new WeakSet(); let cbHome = null;
   (async () => {
     try {
       const c = document.createElement('canvas'); c.width = c.height = 2;
@@ -444,6 +444,35 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
   // Everything around the message box: the layers behind it and the fade strip above it (which often
   // only appears, or grows, while you scroll). Gradients, see-through fills and ::before/::after count too.
   const isGrad = img => /gradient\(/.test(img) && !/url\(/.test(img);
+  // Some bars are decorative layers that ignore the mouse, so normal "what's here" checks can't see them.
+  // For a moment, make everything count, look beside and under the message box, then put it back.
+  const peSheet = new CSSStyleSheet(); try { peSheet.replaceSync('* { pointer-events: auto !important; }'); } catch (e) {}
+  function stacksAround(c) {
+    const br = c.box.getBoundingClientRect(), vw = innerWidth, vh = innerHeight, y = br.top + br.height / 2;
+    const pts = [[br.left - 24, y], [br.right + 24, y], [br.left + br.width / 2, Math.min(vh - 2, br.bottom + 8)], [br.left - 24, Math.min(vh - 2, br.bottom + 8)]]
+      .filter(([x, yy]) => x > 0 && x < vw && yy > 0 && yy < vh);
+    const prev = document.adoptedStyleSheets;
+    document.adoptedStyleSheets = [...prev, peSheet];
+    let out = [];
+    try { out = pts.map(([x, yy]) => ({ x: Math.round(x), y: Math.round(yy), els: document.elementsFromPoint(x, yy) })); }
+    finally { document.adoptedStyleSheets = prev; }
+    return out;
+  }
+  let hiddenAt = 0;
+  function clearHiddenLayers(c) {
+    if (performance.now() - hiddenAt < 400) return;
+    hiddenAt = performance.now();
+    const br = c.box.getBoundingClientRect();
+    for (const { els } of stacksAround(c)) for (const el of els) {
+      if (el === cv || el === host || el === document.body || el === document.documentElement || c.box.contains(el) || el.contains(c.box) && el.getBoundingClientRect().height > innerHeight * 0.45) continue;
+      if (el.closest(SKIP) || el.closest('#claude-style-cb')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < br.width * 0.9 || r.height > innerHeight * 0.45) continue;   // only bar-like layers around the box
+      const cs = getComputedStyle(el), fill = alphaOf(cs.backgroundColor) > 0.3, grad = isGrad(cs.backgroundImage);
+      if (fill || grad) touch(el, 'clear', grad);
+      pseudoNow(el);
+    }
+  }
   function pseudoNow(el) {
     for (const p of ['::before', '::after']) {
       const cs = getComputedStyle(el, p);
@@ -515,7 +544,7 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     if (S.surfaces) { const d = findDock(c); if (d) mark(d, 'data-cs-dock'); }
     touch(c.box, 'msg', false, true);
     if (alphaOf(getComputedStyle(c.inp).backgroundColor) > 0.5) touch(c.inp, 'clear');
-    if (S.surfaces) clearAround(c);
+    if (S.surfaces) { clearAround(c); clearHiddenLayers(c); }
   }
   // Re-check the message box area while scrolling (some fades only appear or grow then).
   let scrollBusy = false, scrollAgain = false;
@@ -756,7 +785,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .preset i { position: absolute; right: 10px; top: 10px; width: 10px; height: 10px; border-radius: 50%; background: var(--pc); box-shadow: 0 0 0 2px rgba(0,0,0,.25); }
 
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; padding: 3px; border-radius: 10px; background: rgba(255,255,255,.05); margin-bottom: 12px; }
-.seg button { border: 0; background: none; padding: 7px 0; border-radius: 7px; cursor: pointer; color: #a9a9b3; transition: background .2s, color .2s; }
+.seg button { border: 0; background: none; padding: 7px 0; border-radius: 7px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; color: #a9a9b3; transition: background .2s, color .2s; }
 .seg button.on { background: rgba(255,255,255,.1); color: #fff; font-weight: 600; }
 
 .drop { position: relative; height: 128px; border-radius: 12px; border: 1.5px dashed rgba(255,255,255,.18); display: grid; place-items: center; cursor: pointer; overflow: hidden;
@@ -956,8 +985,8 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
         <div class="hide" data-importbox><textarea data-style="height:90px;margin-top:8px" placeholder="Paste a copied theme here" data-importtext></textarea><div class="row"><button class="btn pri" data-importapply>Apply</button><button class="btn" data-importcancel>Cancel</button></div></div>
       </div>
       <div class="sec"><h4>Panel</h4>
-        <div class="seg" data-seg="btnMode"><button data-val="composer">Message box</button><button data-val="sidebar">In sidebar</button><button data-val="toolbar">In toolbar</button><button data-val="float">Floating</button><button data-val="hidden">Hidden</button></div>
-        <p class="hint" data-style="margin-top:-4px">"In toolbar" sits next to Claude's back/forward arrows. Ctrl+Shift+Y always works.</p>
+        <div class="seg" data-seg="btnMode"><button data-val="composer" title="Next to the + in the message box">Chat</button><button data-val="sidebar" title="In the left sidebar">Sidebar</button><button data-val="toolbar" title="Next to the back/forward arrows">Top</button><button data-val="float" title="A floating button you can drag">Float</button><button data-val="hidden" title="No button">Off</button></div>
+        <p class="hint" data-style="margin-top:-4px">Ctrl+Shift+Y always opens this panel.</p>
       </div>
       <div class="sec"><h4>Turn off</h4>
         <button class="btn danger" data-turnoff>Turn off ClaudeStyle</button>
@@ -1169,6 +1198,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
         .map(b => ({ label: b.getAttribute('aria-label') || b.title || '', size: Math.round(b.getBoundingClientRect().width) + 'x' + Math.round(b.getBoundingClientRect().height), at: Math.round(b.getBoundingClientRect().left) + ',' + Math.round(b.getBoundingClientRect().top) })),
       bottomBar: at(innerWidth / 2, innerHeight - 60),
       aboveMessageBox: c ? [20, 60, 120].map(dy => ({ dy, stack: at(c.box.getBoundingClientRect().left + c.box.getBoundingClientRect().width / 2, Math.max(1, c.box.getBoundingClientRect().top - dy)) })) : [],
+      hiddenLayers: c ? stacksAround(c).map(p => ({ at: p.x + ',' + p.y, stack: p.els.slice(0, 10).map(el => { const d = desc(el), cs = getComputedStyle(el); return d && { ...d, pe: cs.pointerEvents, shadow2: cs.boxShadow === 'none' ? '' : cs.boxShadow.slice(0, 60), mask: (cs.maskImage || cs.webkitMaskImage || 'none').slice(0, 50), blur: cs.backdropFilter, op: cs.opacity, z: cs.zIndex }; }) })) : [],
       besideMessageBox: c ? at(Math.max(1, c.box.getBoundingClientRect().left - 30), c.box.getBoundingClientRect().top + 20) : [],
       typingArea: up, messageBoxCentre: inp ? at(inp.getBoundingClientRect().left + 40, inp.getBoundingClientRect().top + 10) : [],
       middleOfWindow: at(innerWidth / 2, innerHeight / 2), bottomEdge: at(innerWidth / 2, innerHeight - 8)
@@ -1215,18 +1245,23 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
     if (S.btnMode !== 'composer') { if (cb && cb.isConnected) cb.remove(); return; }
     if (!c) c = findComposer();
     if (!c) return;                                   // no message box on this page: Ctrl+Shift+Y still works
-    if (cb && cb.isConnected && c.box.contains(cb)) return;
+    if (cb && cb.isConnected && cbHome && cbHome.contains(cb) && cbHome.contains(c.box)) return;
     if (noSpot.has(c.box)) return;
-    const btns = [...c.box.querySelectorAll('button')].filter(b => {
-      if (b === cb || b.closest('#claude-style-cb')) return false;
-      const r = b.getBoundingClientRect(); return r.width >= 16 && r.width <= 64 && r.height >= 16 && r.height <= 64 && b.querySelector('svg');
+    // Where the + lives: inside the message box, or (in a started chat) in the row just under it.
+    const bx = c.box.getBoundingClientRect();
+    let scope = c.box;
+    for (let a = c.box.parentElement, i = 0; a && i < 4 && a !== document.body; a = a.parentElement, i++) {
+      const r = a.getBoundingClientRect(); if (r.height > bx.height + 140 || r.width > innerWidth * 0.98) break; scope = a;
+    }
+    const btns = [...scope.querySelectorAll('button')].filter(b => {
+      if (b === cb || b.closest('#claude-style-cb') || host.contains(b)) return false;
+      const r = b.getBoundingClientRect();
+      return r.width >= 16 && r.width <= 64 && r.height >= 16 && r.height <= 64 && b.querySelector('svg') &&
+        r.left >= bx.left - 24 && r.left < bx.left + bx.width / 2 && r.top >= bx.top - 4 && r.top <= bx.bottom + 70;   // left half, in or just under the box
     });
     if (!btns.length) return;
     const lab = b => (b.getAttribute('aria-label') || b.title || '').toLowerCase();
-    // the + button: named like one, otherwise the left-most button on the bottom row of the box
-    const bx = c.box.getBoundingClientRect();
-    const low = btns.filter(b => b.getBoundingClientRect().left < bx.left + bx.width / 2);
-    const left = (low.length ? low : btns).slice().sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left || b.getBoundingClientRect().top - a.getBoundingClientRect().top);
+    const left = btns.slice().sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left || b.getBoundingClientRect().top - a.getBoundingClientRect().top);
     const plus = left.find(b => /\b(add|attach|upload|plus)\b/.test(lab(b))) || left[0];
     cb = cb || document.createElement('button');
     cb.type = 'button'; cb.id = 'claude-style-cb'; cb.className = plus.className;
@@ -1241,16 +1276,16 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
     }
     cb.style.setProperty('flex', '0 0 auto');
     // Try beside the + button's wrapper first, then right beside the button; never let the box grow taller.
-    const h0 = c.box.getBoundingClientRect().height;
+    const h0 = c.box.getBoundingClientRect().height, s0 = scope.getBoundingClientRect().height;
     const spots = [plus];
     for (let a = plus; a.parentElement && a.parentElement.children.length === 1 && a.parentElement !== c.box; ) { a = a.parentElement; spots.push(a); }
     let ok = false;
     for (const spot of spots) {   // the first spot where it sits right beside the + on the same line
       spot.after(cb);
       const r = cb.getBoundingClientRect(), pr = plus.getBoundingClientRect(), gap = r.left - pr.right;
-      if (c.box.getBoundingClientRect().height <= h0 + 2 && Math.abs(r.top - pr.top) < 6 && gap > -2 && gap < 24) { ok = true; break; }
+      if (c.box.getBoundingClientRect().height <= h0 + 2 && scope.getBoundingClientRect().height <= s0 + 2 && Math.abs(r.top - pr.top) < 6 && gap > -2 && gap < 24) { ok = true; break; }
     }
-    if (!ok) { cb.remove(); noSpot.add(c.box); }   // no tidy spot in this message box: Ctrl+Shift+Y still opens the panel
+    if (!ok) { cb.remove(); noSpot.add(c.box); } else cbHome = scope;   // no tidy spot in this message box: Ctrl+Shift+Y still opens the panel
     ui.sync();
   }
 
