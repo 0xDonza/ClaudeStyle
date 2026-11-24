@@ -14,11 +14,11 @@ Add your own wallpaper, frosted-glass panels, new fonts and colours, all from a 
 |---|---|
 | 🖼️ **Backdrop** | Use any picture as your wallpaper (just drag it in), or pick one of 8 gradients. Darken it, blur it, or turn the colour up or down. |
 | 🎭 **Themes** | 8 one-click looks: Glass Night, Aurora, Sunset, Sakura, Ocean, Terminal, Cozy and Playful. |
-| 🪟 **Style** | Frosted-glass panels and message box, an accent colour, rounder or squarer corners, slim scrollbars. |
+| 🪟 **Style** | Frosted-glass panels and message box, dark readable popups (Search, menus), an accent colour, rounder or squarer corners, slim scrollbars. |
 | 🔤 **Fonts** | 10 fonts built in (Inter, Nunito, Poppins, Outfit and more), or any font on your PC. Your code font can be different too. |
 | 🧩 **Extras** | Write your own CSS, share themes with friends (copy and paste), move and resize the panel. |
 
-Open the panel with the 🎨 button in Claude's **top-left toolbar** (next to the ← → arrows), or press **Ctrl + Shift + Y**.
+Open the panel with the 🎨 button in the message box (next to the **+**), or press **Ctrl + Shift + Y** on any page.
 
 ---
 
@@ -40,13 +40,24 @@ That's it. From now on, **just open Claude normally**. ClaudeStyle starts with W
 
 ---
 
+## 🎨 How to open ClaudeStyle
+
+| Where | How |
+|---|---|
+| **Any page** | Press **Ctrl + Shift + Y**. |
+| **In a chat** | Click the 🎨 button in the message box, right next to the **+**. |
+
+Want the button somewhere else? Open the panel, go to **More**, and pick **Sidebar**, **Toolbar**, **Floating** or **Hidden**.
+
+---
+
 ## 🎛️ Using the panel
 
 | Tab | What's there |
 |---|---|
 | **Themes** | One-click looks. Click one and you're done. Changed your mind? Click **Undo**. |
 | **Backdrop** | Choose **Image**, **Gradient** or **None**. Drag a picture onto the box to use it. |
-| **Style** | Panel colour, see-through amount, glass blur, accent colour, and **Reduce effects**. |
+| **Style** | Panel colour, see-through amount, glass blur, **Dark popups**, **Smart glass**, **Message box** (background on/off, colour, strength), accent colour, and **Reduce effects**. |
 | **Text** | Pick a font. Each one shows a preview in its own style. |
 | **More** | Quick CSS, copy or paste themes, where the 🎨 button lives, turn off, debug info, and reset. |
 
@@ -74,10 +85,10 @@ That's it. From now on, **just open Claude normally**. ClaudeStyle starts with W
 Yes, until you turn it off (More → Turn off ClaudeStyle) or uninstall it. Your settings are saved inside Claude, so they stay put.
 
 **What happens when Claude updates?**
-Usually nothing. ClaudeStyle doesn't change any of Claude's files, so updates can't break or erase it. If an update changes Claude's layout, a grey patch might come back or the 🎨 button might sit somewhere odd. You can still open the panel with **Ctrl + Shift + Y**, or switch to the floating button under **More**.
+Usually nothing. ClaudeStyle doesn't change any of Claude's files, so updates can't break or erase it. If an update changes Claude's layout, a grey patch might come back or the 🎨 button might sit somewhere odd. You can still open the panel with **Ctrl + Shift + Y**, or move the button under **More**.
 
 **Will it slow Claude down?**
-It's built to stay light: it only does its checks when Claude is idle. If things ever feel sluggish, turn on **Style → Reduce effects** to switch off the blur.
+It's built to stay light: it only does its checks when Claude is idle, pauses while Claude is minimised, keeps your wallpaper at your screen's size, and uses **Smart glass** (one pre-blurred copy of the wallpaper instead of live blur). If things ever feel sluggish, turn on **Style → Reduce effects** to switch off the blur.
 
 
 **Something looks wrong?**
