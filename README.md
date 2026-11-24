@@ -58,18 +58,6 @@ That's it. From now on, **just open Claude normally**. ClaudeStyle starts with W
 
 ---
 
-## 📸 Screenshots
-
-| Themes | Backdrop |
-|---|---|
-| ![Themes tab](screenshots/claudestyle-1-themes.png) | ![Backdrop tab](screenshots/claudestyle-2-backdrop.png) |
-| **Style** | **Text** |
-| ![Style tab](screenshots/claudestyle-3-style.png) | ![Text tab](screenshots/claudestyle-4-text.png) |
-
-![More tab](screenshots/claudestyle-5-more.png)
-
----
-
 ## ⏸️ Turning it off
 
 | I want to… | Do this |
@@ -92,8 +80,6 @@ Usually nothing. ClaudeStyle doesn't change any of Claude's files, so updates ca
 **Will it slow Claude down?**
 It's built to stay light: it only does its checks when Claude is idle. If things ever feel sluggish, turn on **Style → Reduce effects** to switch off the blur.
 
-**Is it safe?**
-ClaudeStyle only changes how Claude *looks*. It doesn't read your chats or send anything anywhere. It uses Claude's own Developer menu to get in, and while that's switched on, other programs on your PC could connect to Claude the same way. Turn ClaudeStyle off (and untick the menu item) if you don't want that.
 
 **Something looks wrong?**
 First check that Developer Mode is on and **Developer → Enable Main Process Debugger** is ticked in Claude. Still stuck? Open the panel, go to **More → Copy debug info**, and paste it into a [new issue](https://github.com/0xDonza/ClaudeStyle-Custom-Addon/issues). It only contains layout details, never your chats.
@@ -107,6 +93,23 @@ First check that Developer Mode is on and **Developer → Enable Main Process De
 - Log file: `%LOCALAPPDATA%\ClaudeStyle\log.txt`
 
 ---
+
+## 🖼️ Tabs Showcase
+
+<img width="3200" height="1800" alt="image" src="https://github.com/user-attachments/assets/d96f7ac1-d485-467d-b074-db937461b217" />
+<img width="1456" height="819" alt="image" src="https://github.com/user-attachments/assets/339a5704-f4b6-469c-a401-8e9363511e82" />
+<img width="3200" height="1800" alt="image" src="https://github.com/user-attachments/assets/6344d1ce-d622-4ede-bd66-499f5dcfca2e" />
+<img width="1456" height="819" alt="image" src="https://github.com/user-attachments/assets/2b130f9f-e528-4446-b60f-45029edd3258" />
+<img width="1456" height="819" alt="image" src="https://github.com/user-attachments/assets/d69326ab-f61d-44ac-a0d6-0b0eb4bafd76" />
+
+---
+
+## ✨ Buy Me A Coffee
+Feel free to donate this is a free project of mine and im happy to help!
+
+- btc: bc1qvxalp6cj8xe7pemxepgtnpw9l0mq46m5avgrm7
+- eth: 0xe01212d062Db453657E10aa37C8c93726154c1a2
+- sol: 2CTYC4YquksKNCRS9Tw8mHVEEJS1XLR1SCWtZtX9T6fg
 
 *Made by **Donza**. ClaudeStyle is a fan-made project and isn't made by or affiliated with Anthropic.
 The bundled fonts are free fonts under the SIL Open Font License (see `FONT-LICENSES.txt`).*
