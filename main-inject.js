@@ -143,11 +143,47 @@
     if (st.off) return;
     if (msg === '__claudestyle:toggle') chats().forEach(w => run(w, 'window.__claudeMod && (window.__claudeMod.toggle || window.__claudeMod.open)()'));
     else if (msg === '__claudestyle:frame-ok') chats().forEach(w => run(w, 'window.__claudeMod && window.__claudeMod.shellButton && window.__claudeMod.shellButton(true)'));
+    else if (msg.indexOf('__claudestyle:open:') === 0) {
+      // links from the panel (only ClaudeStyle's own GitHub pages) open in the normal web browser
+      const link = msg.slice(19);
+      if (/^https:\/\/github\.com\/0xDonza\/ClaudeStyle-Custom-Addon(\/[\w\-./%]*)?$/.test(link)) {
+        try { req('electron').shell.openExternal(link); run(wc, 'window.__claudeMod && window.__claudeMod.linkOpened && window.__claudeMod.linkOpened()'); } catch (e) {}
+      }
+    }
     else if (msg.indexOf('__claudestyle:btn:') === 0) {
       st.btnMode = msg.slice(18);
       webContents.getAllWebContents().filter(isFrame).forEach(w => run(w, 'window.__csShell && window.__csShell.mode(' + JSON.stringify(st.btnMode) + ')'));
     }
   };
+  // Newest ClaudeStyle release on GitHub (read-only; nothing is downloaded). Checked at most once a day.
+  const tellUpdate = wc => { if (st.latest) run(wc, 'window.__claudeMod && window.__claudeMod.updateInfo && window.__claudeMod.updateInfo(' + JSON.stringify(st.latest) + ')'); };
+  function checkUpdate() {
+    const file = path.join(st.dir, 'update.json');
+    let cache = null;
+    try { cache = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) {}
+    if (cache && cache.tag) st.latest = { tag: cache.tag, url: cache.url };
+    if (cache && Date.now() - (cache.checked || 0) < 24 * 3600 * 1000) { chats().forEach(tellUpdate); return; }
+    if (st.checking) return;
+    st.checking = true;
+    try {
+      const r = req('https').get('https://api.github.com/repos/0xDonza/ClaudeStyle-Custom-Addon/releases/latest',
+        { headers: { 'User-Agent': 'ClaudeStyle', 'Accept': 'application/vnd.github+json' }, timeout: 8000 }, res => {
+          let body = '';
+          res.on('data', d => { if (body.length < 200000) body += d; });
+          res.on('end', () => {
+            st.checking = false;
+            try {
+              const j = JSON.parse(body);
+              if (res.statusCode === 200 && j.tag_name && j.html_url) st.latest = { tag: String(j.tag_name).slice(0, 40), url: String(j.html_url) };
+              fs.writeFileSync(file, JSON.stringify({ checked: Date.now(), tag: st.latest && st.latest.tag, url: st.latest && st.latest.url }));
+            } catch (e) {}
+            chats().forEach(tellUpdate);
+          });
+        });
+      r.on('timeout', () => r.destroy());
+      r.on('error', () => { st.checking = false; });
+    } catch (e) { st.checking = false; }
+  }
   st.listened = st.listened || new WeakSet();
   const listen = wc => {
     if (st.listened.has(wc)) return;
@@ -161,7 +197,7 @@
     listen(wc);
     // Prefer claude.ai windows; if the app shows none, fall back to any web page window.
     const anyChat = webContents.getAllWebContents().some(isChat);
-    if (anyChat ? isChat(wc) : isPage(wc)) run(wc, code());
+    if (anyChat ? isChat(wc) : isPage(wc)) { run(wc, code()); setTimeout(() => { tellUpdate(wc); checkUpdate(); }, 4000); }
     else if (anyChat && isFrame(wc)) run(wc, FRAME + ';window.__csShell && window.__csShell.mode(' + JSON.stringify(st.btnMode) + ')');
   };
   if (!st.hooked) {
