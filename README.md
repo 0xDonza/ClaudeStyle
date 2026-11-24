@@ -38,6 +38,8 @@ That's it. From now on, **just open Claude normally**. ClaudeStyle starts with W
 
 **Updating:** download the new zip and run `Install.bat` again. Your themes and settings are kept.
 
+Main Process Debugger must be turned on everytime when you fully close claude or turn off your devices we are currently testing ways to make this option turn on automatically with no user input.
+
 ---
 
 ## 🎨 How to open ClaudeStyle
