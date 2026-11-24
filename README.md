@@ -3,7 +3,8 @@
 **Make the Claude desktop app look the way *you* want.**
 Add your own wallpaper, frosted-glass panels, new fonts and colours, all from a panel built right into Claude.
 
-<img width="1617" height="955" alt="ClaudeStyle in the Claude desktop app" src="https://github.com/user-attachments/assets/aa5f77d6-d875-4b26-a4e0-acca242a2ad0" />
+<img width="1444" height="853" alt="image" src="https://github.com/user-attachments/assets/80b31d7b-3d40-4bc3-ad12-ceda768773ca" />
+
 
 ---
 
