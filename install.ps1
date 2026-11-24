@@ -21,7 +21,7 @@ if ($Uninstall) {
   $Links | ForEach-Object { Remove-Item $_ -ErrorAction SilentlyContinue }
   foreach ($d in $Dirs) { Remove-Item (Join-Path $d 'ClaudeStyle (Browser).lnk') -ErrorAction SilentlyContinue }
   Remove-Item $StartupLink -ErrorAction SilentlyContinue
-  foreach ($n in 'ClaudeStyle - Turn off.lnk', 'ClaudeStyle - Turn on.lnk') { Remove-Item (Join-Path ([Environment]::GetFolderPath('Programs')) $n) -ErrorAction SilentlyContinue }
+  foreach ($n in 'ClaudeStyle - Turn off.lnk', 'ClaudeStyle - Turn on.lnk', 'ClaudeStyle On - Off.lnk') { Remove-Item (Join-Path ([Environment]::GetFolderPath('Programs')) $n) -ErrorAction SilentlyContinue }
   Remove-Item $Dest -Recurse -Force -ErrorAction SilentlyContinue
   [Windows.Forms.MessageBox]::Show("ClaudeStyle removed.`nYour normal Claude app is untouched.", $App) | Out-Null
   exit 0
@@ -62,14 +62,10 @@ foreach ($l in $Links) {
   $s.Save()
 }
 
-# Start menu: turn ClaudeStyle off / on without uninstalling
-foreach ($m in @(@{ N = 'ClaudeStyle - Turn off'; A = '-Off'; D = 'Turn ClaudeStyle off (keeps your settings)' }, @{ N = 'ClaudeStyle - Turn on'; A = '-On'; D = 'Turn ClaudeStyle back on' })) {
-  $s = $shell.CreateShortcut((Join-Path ([Environment]::GetFolderPath('Programs')) "$($m.N).lnk"))
-  $s.TargetPath = $PS
-  $s.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Dest\ClaudeStyle.ps1`" $($m.A)"
-  $s.WorkingDirectory = $Dest; $s.WindowStyle = 7; $s.IconLocation = $icon; $s.Description = $m.D
-  $s.Save()
-}
+# Only one Start menu entry ("ClaudeStyle"). Remove on/off shortcuts from earlier versions;
+# turning off and on now happens inside Claude's ClaudeStyle panel.
+$Programs = [Environment]::GetFolderPath('Programs')
+foreach ($old in 'ClaudeStyle - Turn off.lnk', 'ClaudeStyle - Turn on.lnk', 'ClaudeStyle On - Off.lnk') { Remove-Item (Join-Path $Programs $old) -ErrorAction SilentlyContinue }
 Remove-Item (Join-Path $Dest 'off.flag') -ErrorAction SilentlyContinue   # installing = on
 
 # Background helper: starts with Windows and connects whenever Claude opens (no clicking needed)

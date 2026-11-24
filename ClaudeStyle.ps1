@@ -4,12 +4,13 @@
 #   ClaudeStyle.ps1 -Watch   starts with Windows: waits in the background and connects whenever Claude opens
 #   ClaudeStyle.ps1 -Off     turn ClaudeStyle off (removes it from Claude now, stops it starting with Windows)
 #   ClaudeStyle.ps1 -On      turn it back on
+#   ClaudeStyle.ps1 -Toggle  flips between on and off (kept for scripts; no shortcut uses it)
 #
 # Two ways in, tried in order:
 #   A) start Claude with --remote-debugging-port and inject into its windows
 #   B) Claude's own Developer menu > "Enable Main Process Debugger", then inject from inside the app
 
-param([switch]$Watch, [switch]$Off, [switch]$On)
+param([switch]$Watch, [switch]$Off, [switch]$On, [switch]$Toggle, [switch]$Quiet)
 $ErrorActionPreference = 'SilentlyContinue'
 $Port     = 9339   # route A (unusual port, so we never grab a browser's debugger)
 $MainPort = 9229   # route B (Node inspector opened by Claude's Developer menu)
@@ -179,6 +180,8 @@ function Find-Route {
 function Get-Helpers {
   @(Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" | Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -like '*ClaudeStyle.ps1*' })
 }
+# Helpers started by the shortcut click (not the background helper, not -On/-Off/-Toggle)
+function Is-ClickHelper($p) { $p.CommandLine -notlike '*-Watch*' -and $p.CommandLine -notmatch '\s-(Toggle|On|Off)(\s|"|$)' }
 function Reset-PortCache { $script:PortKinds = @{}; $script:PortHost = @{} }
 
 # ---------- DevTools connection helpers ----------
@@ -219,7 +222,8 @@ function Get-PageExpr {
   return [IO.File]::ReadAllText($ModFile) + "`n;window.__claudeMod && window.__claudeMod.setFileCss(" + (JsStr (Read-Css)) + ");"
 }
 function Get-MainExpr {
-  return [IO.File]::ReadAllText($MainFile).Replace('__MOD__', (JsStr ([IO.File]::ReadAllText($ModFile)))).Replace('__CSS__', (JsStr (Read-Css)))
+  $startup = Join-Path ([Environment]::GetFolderPath('Startup')) 'ClaudeStyle (background).lnk'
+  return [IO.File]::ReadAllText($MainFile).Replace('__MOD__', (JsStr ([IO.File]::ReadAllText($ModFile)))).Replace('__CSS__', (JsStr (Read-Css))).Replace('__DIR__', (JsStr $Here)).Replace('__STARTUP__', (JsStr $startup))
 }
 function Get-Targets([int]$p) {
   $h = $(if ($script:DebugHost) { $script:DebugHost } else { '127.0.0.1' })
@@ -227,11 +231,14 @@ function Get-Targets([int]$p) {
   if ($r) { return $r } else { return @() }
 }
 $OnMsg = 'ClaudeStyle is on - click the palette button in Claude (or Ctrl+Shift+Y).'
+$script:SaidOn = $false          # the "ClaudeStyle is on" note shows once per Claude session
+function Say-On { if (-not $script:SaidOn) { $script:SaidOn = $true; Notify $OnMsg } }
 
 # ---------- route A: theme each window through the remote-debugging port ----------
 function Run-RouteA {
   $conns = @{}; $listed = $false; $gone = 0; $stamp = ''
   while ($true) {
+    if (Test-Path (Join-Path $Here 'off.flag')) { Log 'Turned off from the ClaudeStyle panel'; break }
     if (@($conns.Values | Where-Object { $_.Ws.State -eq 'Open' }).Count -gt 0) { $gone = 0 }
     elseif ((Get-ClaudeProcs $claude).Count -eq 0) { $gone++ } else { $gone = 0 }
     if ($gone -ge 2) { break }
@@ -249,7 +256,7 @@ function Run-RouteA {
           Send-Cdp $c 'Page.addScriptToEvaluateOnNewDocument' ('{"source":' + (JsStr ([IO.File]::ReadAllText($ModFile))) + '}')
           Send-Cdp $c 'Page.setBypassCSP' '{"enabled":true}'
           Send-Eval $c (Get-PageExpr) $false
-          $conns[$t.id] = $c; Log "Themed window: $($t.url)"; Notify $OnMsg
+          $conns[$t.id] = $c; Log "Themed window: $($t.url)"; Say-On
         } else { Log "Could not connect to window: $($t.url)" }
       }
     }
@@ -266,18 +273,20 @@ function Run-RouteA {
 }
 
 # ---------- route B: inject from inside Claude's main process ----------
+$script:Connects = 0
 function Run-RouteB {
   $c = $null; $stamp = $null; $gone = 0
   while ($true) {
+    if (Test-Path (Join-Path $Here 'off.flag')) { Log 'Turned off from the ClaudeStyle panel'; break }
     if ($c -and $c.Ws.State -eq 'Open') { $gone = 0 }
     elseif ((Get-ClaudeProcs $claude).Count -eq 0) { $gone++ } else { $gone = 0 }
     if ($gone -ge 2) { break }
     if (-not $c -or $c.Ws.State -ne 'Open') {
-      if ($c) { $c.Ws.Dispose(); $c = $null }
+      if ($c) { Log "Connection ended (state $($c.Ws.State), close: $($c.Ws.CloseStatus) $($c.Ws.CloseStatusDescription))"; $c.Ws.Dispose(); $c = $null }
       $t = Get-Targets $MainPort | Where-Object { $_.webSocketDebuggerUrl } | Select-Object -First 1
       if ($t) {
         $c = Open-Ws $t.webSocketDebuggerUrl
-        if ($c) { Log 'Connected to Claude main process'; $stamp = $null; Notify $OnMsg }
+        if ($c) { $script:Connects++; Log "Connected to Claude main process (connection #$($script:Connects))"; $stamp = $null; Say-On }
       }
     }
     if ($c -and $c.Ws.State -eq 'Open') {
@@ -312,13 +321,29 @@ function Turn-On {
   Remove-Item $OffFlag -ErrorAction SilentlyContinue
   Set-StartWithWindows $true
   if (@(Get-Helpers | Where-Object { $_.CommandLine -like '*-Watch*' }).Count -eq 0) { Start-Watcher; Start-Sleep -Milliseconds 1200 }
+  Wake-InApp
   Log 'Turned on'
+}
+# If ClaudeStyle was switched off from inside Claude's panel, switch it back on there too.
+function Wake-InApp {
+  if ((Get-ClaudeProcs $claude).Count -gt 0 -and (Find-Route) -eq 'B') {
+    $t = Get-Targets $MainPort | Where-Object { $_.webSocketDebuggerUrl } | Select-Object -First 1
+    $c = $(if ($t) { Open-Ws $t.webSocketDebuggerUrl })
+    if ($c) {
+      $page = "try { localStorage.removeItem('claudeStyleDisabled'); } catch (e) {} if (window.__claudeMod && window.__claudeMod.dormant) window.__claudeMod.wake();"
+      $expr = "(() => { const req = typeof require === 'function' ? require : process.mainModule.require.bind(process.mainModule);" +
+              " req('electron').webContents.getAllWebContents().forEach(w => { try { if (/claude\.ai/.test(w.getURL())) w.executeJavaScript(" + (JsStr $page) + ", true).catch(() => {}); } catch (e) {} });" +
+              " return 'on'; })()"
+      Send-Eval $c $expr $true; Start-Sleep -Milliseconds 400; $c.Ws.Dispose()
+      Log 'Woke ClaudeStyle inside Claude (if it was off)'
+    }
+  }
 }
 function Turn-Off {
   Log 'Turning off'
   Get-Helpers | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
   Set-StartWithWindows $false
-  Set-Content -Path $OffFlag -Value 'ClaudeStyle is turned off. Use "ClaudeStyle - Turn on" to turn it back on.'
+  Set-Content -Path $OffFlag -Value 'ClaudeStyle is turned off. Open the ClaudeStyle shortcut to turn it back on.'
   if ((Get-ClaudeProcs $claude).Count -eq 0) { return }
   $route = Find-Route
   if ($route -eq 'B') {
@@ -327,7 +352,7 @@ function Turn-Off {
     if ($c) {
       $expr = "(() => { const req = typeof require === 'function' ? require : process.mainModule.require.bind(process.mainModule);" +
               " const { webContents } = req('electron'); const st = globalThis.__claudeStyle; if (st) st.off = true;" +
-              " webContents.getAllWebContents().forEach(w => { try { w.executeJavaScript('window.__claudeMod && window.__claudeMod.remove()', true).catch(() => {}); } catch (e) {} });" +
+              " webContents.getAllWebContents().forEach(w => { try { w.executeJavaScript('window.__claudeMod && window.__claudeMod.remove(); window.__csShell && window.__csShell.remove();', true).catch(() => {}); } catch (e) {} });" +
               " return 'off'; })()"
       Send-Eval $c $expr $true; Start-Sleep -Milliseconds 500; $c.Ws.Dispose()
       Log 'Removed ClaudeStyle from the open Claude windows'
@@ -345,14 +370,16 @@ $askText = ("One more click:`n`n" +
             "In Claude, open the menu (top-left), then Developer > Enable Main Process Debugger.`n" +
             "If it already has a tick, click it twice (off, then on again).")
 
+if ($Toggle) { if (Test-Path $OffFlag) { $On = $true } else { $Off = $true } }
 if ($Off) {
   Turn-Off; Stop-Tray
-  Show-Msg "ClaudeStyle is off.`n`nClaude is back to its normal look, and ClaudeStyle won't start with Windows.`nYour themes and settings are kept.`n`nTo turn it back on, use 'ClaudeStyle - Turn on' in the Start menu (or the ClaudeStyle shortcut)."
+  Show-Msg "ClaudeStyle is off.`n`nClaude is back to its normal look, and ClaudeStyle won't start with Windows.`nYour themes and settings are kept.`n`nTo turn it back on, open the ClaudeStyle shortcut."
   exit 0
 }
 if ($On) {
-  Turn-On; Notify 'ClaudeStyle is on. It connects whenever Claude is open.'
-  Start-Sleep -Seconds 6; Stop-Tray
+  Turn-On; Stop-Tray
+  if ($Quiet) { exit 0 }
+  Show-Msg "ClaudeStyle is ON.`n`nIt connects by itself whenever Claude is open, and starts with Windows again.`n(Keep Developer > Enable Main Process Debugger ticked in Claude.)"
   exit 0
 }
 
@@ -364,14 +391,15 @@ if ($Watch) {
   Enable-DevMenu $claude
   $seen = $null; $told = $false
   while ($true) {
-    if ((Get-ClaudeProcs $claude).Count -eq 0) { Reset-PortCache; $seen = $null; $told = $false; Start-Sleep -Seconds 3; continue }
+    if ((Get-ClaudeProcs $claude).Count -eq 0) { Reset-PortCache; $seen = $null; $told = $false; $script:SaidOn = $false; Start-Sleep -Seconds 3; continue }
     if (-not $seen) { $seen = Get-Date; Log 'Watcher: Claude opened' }
     # a shortcut-started helper is already looking after this Claude session
-    if (@(Get-Helpers | Where-Object { $_.CommandLine -notlike '*-Watch*' }).Count -gt 0) { Start-Sleep -Seconds 3; continue }
+    if (@(Get-Helpers | Where-Object { Is-ClickHelper $_ }).Count -gt 0) { Start-Sleep -Seconds 3; continue }
     $route = Find-Route
     if ($route) {
       Log "Watcher: connected (route $route)"
       if ($route -eq 'A') { Run-RouteA } else { Run-RouteB }
+      if (Test-Path $OffFlag) { Log 'Watcher: ClaudeStyle was turned off; stopping'; Stop-Tray; exit 0 }
       Log 'Watcher: Claude closed'; Reset-PortCache; $seen = $null; $told = $false
       continue
     }
@@ -387,7 +415,7 @@ if ($Watch) {
 if (Test-Path $OffFlag) { Turn-On; Notify 'ClaudeStyle turned back on.' }
 $helpers = Get-Helpers
 $watcher = @($helpers | Where-Object { $_.CommandLine -like '*-Watch*' })
-$clicks  = @($helpers | Where-Object { $_.CommandLine -notlike '*-Watch*' })
+$clicks  = @($helpers | Where-Object { Is-ClickHelper $_ })
 # if two clicks start at once (double-click) the newer one wins; older click-helpers are stopped
 $me = Get-CimInstance Win32_Process -Filter "ProcessId = $PID"
 if ($me -and @($clicks | Where-Object { $_.CreationDate -gt $me.CreationDate }).Count -gt 0) { exit 0 }
@@ -398,7 +426,7 @@ if ($watcher.Count -gt 0) {
   # The background helper does the connecting; the shortcut just opens Claude and helps if needed.
   if ((Get-ClaudeProcs $claude).Count -eq 0) { Log 'Opening Claude (background helper will connect)'; Start-Claude $claude ''; Notify 'Opening Claude...' }
   for ($i = 0; $i -lt 20 -and -not (Find-Route); $i++) { Start-Sleep -Milliseconds 500 }
-  if (-not (Find-Route)) { Log 'Debugger not on; showing how'; Show-Msg $askText }
+  if (Find-Route) { Start-Sleep -Seconds 2; Wake-InApp } else { Log 'Debugger not on; showing how'; Show-Msg $askText }
   Stop-Tray; exit 0
 }
 if ((Get-ClaudeProcs $claude).Count -eq 0) {
@@ -429,6 +457,7 @@ if (-not $route) {
   exit 1
 }
 Log "Connected using route $route (window port $Port, main port $MainPort, host $script:DebugHost)"
+if ($route -eq 'B') { Wake-InApp }
 if ($route -eq 'A') { Run-RouteA } else { Run-RouteB }
 Stop-Tray
 Log 'Claude closed; helper exiting'
