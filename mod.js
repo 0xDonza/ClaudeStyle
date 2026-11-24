@@ -61,7 +61,8 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     panel: '#101418', op: 55, glass: 14, radius: 16,
     font: '', customFont: '', codeFont: '', shadow: false,
     useAccent: false, accent: '#d97757', scroll: true, lite: false,
-    css: '', preset: '', panPos: null, fabPos: null, panSize: null
+    css: '', preset: '', panPos: null, fabPos: null, panSize: null,
+    msgBg: true, msgColor: '#0d0d0f', msgOp: 65
   };
   let S;
   try { S = { ...DEF, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) { S = { ...DEF }; }
@@ -100,6 +101,7 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
   ];
   const ACCENTS = ['#d97757', '#7c9cff', '#38bdf8', '#2ad4a7', '#a3e635', '#f4a261', '#f28cb1', '#c084fc'];
   const PANELS = ['#101418', '#0c1222', '#06161c', '#22101c', '#1a0f0e', '#000000', '#1f2937', '#ffffff'];
+  const MSGS = ['#0d0d0f', '#000000', '#111827', '#0c1222', '#06161c', '#22101c', '#1a0f0e', '#1e1b2e'];
 
   // ---------------------------------------------------------------- fonts (loaded from bundled data, CSP-proof)
   const fontLoads = {};
@@ -163,9 +165,15 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
   }
   function draw(fade) {
     if (!hasBg()) { cv.style.display = 'none'; lastDrawKey = ''; return; }
+    // Blur, darken and colour intensity are a filter on top of the picture, done by the graphics card,
+    // so dragging those sliders never repaints the picture. A slight zoom hides the blurred edges.
+    const tone = `${S.blur ? `blur(${S.blur}px) ` : ''}brightness(${(100 - S.dim) / 100}) saturate(${S.sat}%)`;
+    if (cv.style.filter !== tone) cv.style.filter = tone;
+    const zoom = S.blur ? `scale(${(1 + (S.blur * 4) / Math.max(200, Math.min(innerWidth, innerHeight))).toFixed(4)})` : 'none';
+    if (cv.style.transform !== zoom) cv.style.transform = zoom;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const W = Math.max(1, Math.round(innerWidth * dpr)), H = Math.max(1, Math.round(innerHeight * dpr));
-    const key = [S.bgType, bitmapKey, S.grad, S.dim, S.blur, S.sat, W, H].join('|');
+    const key = [S.bgType, bitmapKey, S.grad, W, H].join('|');
     if (key === lastDrawKey && cv.style.display === 'block') return;
     const changedImage = lastDrawKey.split('|').slice(0, 3).join('|') !== key.split('|').slice(0, 3).join('|');
     lastDrawKey = key;
@@ -173,12 +181,9 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     if (cv.height !== H) cv.height = H;
     const g = cv.getContext('2d');
     g.save(); g.clearRect(0, 0, W, H);
-    const b = S.blur * dpr;
-    g.filter = `${b ? `blur(${b}px) ` : ''}saturate(${S.sat}%)`;
     if (S.bgType === 'gradient') paintGradient(g, W, H, GRADS[clamp(S.grad, 0, GRADS.length - 1)].c);
-    else paintCover(g, bitmap, W, H, 0, 0, b);
+    else paintCover(g, bitmap, W, H, 0, 0, 0);
     g.restore();
-    if (S.dim) { g.fillStyle = `rgba(0,0,0,${S.dim / 100})`; g.fillRect(0, 0, W, H); }
     cv.style.display = 'block';
     if ((fade || changedImage) && cv.animate && !reduceMotion()) cv.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: 'ease-out' });
   }
@@ -191,7 +196,8 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
   const touched = new Map();
   // Layout rules learned from panels we've cleared, so rebuilt panels (e.g. after switching chats)
   // are see-through from their very first frame. Remembered between launches.
-  const LKEY = 'claudeStyleLearned';
+  const LKEY = 'claudeStyleLearned3';
+  try { ['claudeStyleLearned', 'claudeStyleLearned2'].forEach(k => localStorage.removeItem(k)); } catch (e) {}   // drop rules learned by older versions
   let learned = {};
   try { learned = JSON.parse(localStorage.getItem(LKEY) || '{}') || {}; } catch (e) { learned = {}; }
   let learnTimer = 0;
@@ -213,6 +219,9 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     return Object.entries(learned).map(([sig, v]) => {
       if (sig.endsWith('|pseudo')) { const b = sig.slice(0, -7); return `${b}::before, ${b}::after { background-color: transparent !important; background-image: none !important; }`; }
       const img = v.endsWith('+img') ? ' background-image: none !important;' : '';
+      if (v.startsWith('msg')) return S.msgBg
+        ? `${sig} { background-color: ${rgba(S.msgColor, S.msgOp / 100)} !important; backdrop-filter: ${blur} !important;${img} }`
+        : `${sig} { background-color: transparent !important; backdrop-filter: none !important;${img} }`;
       return v.startsWith('tint')
         ? `${sig} { background-color: ${tint} !important; backdrop-filter: ${blur} !important;${img} }`
         : `${sig} { background-color: transparent !important;${img} }`;
@@ -239,11 +248,12 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     }
     const t = touched.get(el); if (t.mode !== mode || (clearImage && !t.img)) learn(el, mode, clearImage || t.img);
     t.mode = mode; if (clearImage) t.img = true;
-    const bg = mode === 'tint' ? rgba(S.panel, S.op / 100) : 'transparent';
+    const msgBg = S.msgBg ? rgba(S.msgColor, S.msgOp / 100) : 'transparent';
+    const bg = mode === 'tint' ? rgba(S.panel, S.op / 100) : mode === 'msg' ? msgBg : 'transparent';
     if (el.style.getPropertyValue('background-color') !== bg) el.style.setProperty('background-color', bg, 'important');
     if (t.img && el.style.getPropertyValue('background-image') !== 'none') el.style.setProperty('background-image', 'none', 'important');
-    if (mode === 'tint') {
-      const bf = S.lite ? 'none' : `blur(${S.glass}px) saturate(130%)`;
+    if (mode === 'tint' || mode === 'msg') {
+      const bf = S.lite || (mode === 'msg' && !S.msgBg) ? 'none' : `blur(${S.glass}px) saturate(130%)`;
       if (el.style.getPropertyValue('backdrop-filter') !== bf) el.style.setProperty('backdrop-filter', bf, 'important');
     }
     if (radius) t.round = true;
@@ -260,6 +270,8 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     });
     touched.clear();
     pseudoMarked.forEach(el => el.removeAttribute('data-cs-pseudo')); pseudoMarked.clear();
+    marked.forEach(el => ['data-cs-dock', 'data-cs-msg', 'data-cs-flat'].forEach(a => el.removeAttribute(a))); marked.clear();
+    document.querySelectorAll('[data-cs-dock],[data-cs-msg],[data-cs-flat]').forEach(el => ['data-cs-dock', 'data-cs-msg', 'data-cs-flat'].forEach(a => el.removeAttribute(a)));
     document.querySelectorAll('[data-cs-pseudo]').forEach(el => el.removeAttribute('data-cs-pseudo'));
     // Anything else still carrying our mark (e.g. an element the app copied) gets our styles removed too.
     document.querySelectorAll('[data-claude-style]').forEach(el => {
@@ -268,10 +280,18 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     });
   }
   // Big panels, plus full-width bars along the top/bottom edge or around the reply box.
+  // Is the element inside something that scrolls (i.e. it's chat content, not part of the layout)?
+  function inScroller(el) {
+    for (let a = el.parentElement; a && a !== document.body && a !== document.documentElement; a = a.parentElement) {
+      const o = getComputedStyle(a).overflowY;
+      if ((o === 'auto' || o === 'scroll' || o === 'overlay') && a.scrollHeight > a.clientHeight + 1) return true;
+    }
+    return false;
+  }
   function isSurface(el, r, vw, vh) {
     if ((r.width >= vw * 0.12 && r.height >= vh * 0.45) || (r.width >= vw * 0.35 && r.height >= vh * 0.22)) return true;
-    if (r.width >= vw * 0.55 && r.height >= 20) {
-      if (r.bottom >= vh - 3 || r.top <= 3) return true;
+    if (r.width >= vw * 0.55 && r.height >= 20 && r.height <= vh * 0.3) {
+      if ((r.bottom >= vh - 3 || r.top <= 3) && !inScroller(el)) return true;   // header/footer bars
       if (el.querySelector && el.querySelector('fieldset')) return true;
     }
     return false;
@@ -314,30 +334,93 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     const vh = innerHeight;
     const inputs = [...document.querySelectorAll('[contenteditable="true"], textarea')].filter(el => {
       if (host.contains(el) || el.closest('[role="dialog"]')) return false;
-      const r = el.getBoundingClientRect(); return r.width >= 200 && r.bottom > vh * 0.4;
+      const r = el.getBoundingClientRect(); return r.width >= 20 && r.height > 0 && r.bottom > vh * 0.4;
     });
     if (!inputs.length) return null;
     const inp = inputs.sort((a, b) => b.getBoundingClientRect().bottom - a.getBoundingClientRect().bottom)[0];
+    // The message box is the OUTERMOST framed card around where you type: the one that also holds the
+    // + / mic / model row underneath. Any boxes inside it (like the Reply field) are flattened into it.
     const chain = []; let box = null;
-    for (let el = inp.parentElement, i = 0; el && el !== document.body && i < 12; el = el.parentElement, i++) {
+    for (let el = inp, i = 0; el && el !== document.body && i < 12; el = el.parentElement, i++) {
       const r = el.getBoundingClientRect();
       if (r.height > vh * 0.6 || r.width > innerWidth * 0.98) break;
       const cs = getComputedStyle(el);
       const solid = alphaOf(cs.backgroundColor) > 0.5;
       const rounded = parseFloat(cs.borderTopLeftRadius) >= 6;
-      const framed = rounded && (solid || parseFloat(cs.borderTopWidth) > 0 || cs.boxShadow !== 'none');
-      chain.push({ el, solid });
-      if (framed) box = el;
+      const framed = rounded && (alphaOf(cs.backgroundColor) > 0.02 || parseFloat(cs.borderTopWidth) > 0 || cs.boxShadow !== 'none');
+      if (el !== inp) chain.push({ el, solid });
+      if (framed && r.width >= 280) box = el;
     }
-    return box ? { inp, box, inner: chain.filter(c => c.solid && c.el !== box && box.contains(c.el)).map(c => c.el) } : null;
+    if (!box) return null;
+    return { inp, box, inner: chain.filter(c => c.el !== box && box.contains(c.el)).map(c => c.el) };
+  }
+  // Everything around the message box: the layers behind it and the fade strip above it (which often
+  // only appears, or grows, while you scroll). Gradients, see-through fills and ::before/::after count too.
+  const isGrad = img => /gradient\(/.test(img) && !/url\(/.test(img);
+  function pseudoNow(el) {
+    for (const p of ['::before', '::after']) {
+      const cs = getComputedStyle(el, p);
+      if (cs.content !== 'none' && cs.content !== 'normal' && (alphaOf(cs.backgroundColor) > 0.3 || isGrad(cs.backgroundImage))) {
+        if (!el.hasAttribute('data-cs-pseudo')) { el.setAttribute('data-cs-pseudo', ''); pseudoMarked.add(el); learn(el, 'pseudo', false); }
+        return;
+      }
+    }
+  }
+  function clearAround(c) {
+    const br = c.box.getBoundingClientRect(), vh = innerHeight;
+    const near = el => {
+      const r = el.getBoundingClientRect();
+      return r.width >= br.width * 0.6 && r.height > 0 && r.bottom >= br.top - 420 && r.top <= vh && r.right > br.left && r.left < br.right;
+    };
+    const look = el => {
+      if (el === c.box || el === host || el === cv || c.box.contains(el)) return;
+      if (el.closest('[role="menu"],[role="dialog"],[role="alertdialog"],[role="listbox"],[role="tooltip"],[data-radix-popper-content-wrapper],pre,code')) return;
+      if (!near(el)) return;
+      const cs = getComputedStyle(el);
+      const fill = alphaOf(cs.backgroundColor) > 0.3, grad = isGrad(cs.backgroundImage);
+      if (fill || grad) touch(el, touched.has(el) && touched.get(el).mode === 'tint' ? 'tint' : 'clear', grad);
+      pseudoNow(el);
+    };
+    for (let el = c.box.parentElement, i = 0; el && el !== document.body && i < 10; el = el.parentElement, i++) {
+      look(el);
+      for (const sib of el.children) {
+        if (sib.contains(c.box)) continue;
+        look(sib);
+        // look inside short strips (fades, footers) only, never inside the message list
+        if (sib.getBoundingClientRect().height <= 320) for (const k of sib.children) look(k);
+      }
+    }
+  }
+  const marked = new Set();
+  function mark(el, attr) { if (!el.hasAttribute(attr)) el.setAttribute(attr, ''); marked.add(el); }
+  function findDock(c) {
+    // the tallest wrapper around the message box that is still just the bottom area (not the chat)
+    let dock = null;
+    for (let el = c.box.parentElement; el && el !== document.body; el = el.parentElement) {
+      const r = el.getBoundingClientRect();
+      if (r.height > innerHeight * 0.45 || r.width > innerWidth * 0.98 && r.height > innerHeight * 0.3) break;
+      dock = el;
+    }
+    return dock;
   }
   function styleComposer() {
     if (!S.on || !hasBg()) return;
     const c = findComposer(); if (!c) return;
-    touch(c.box, 'tint', false, true);
-    c.inner.forEach(el => touch(el, 'clear'));
+    mark(c.box, 'data-cs-msg');
+    c.inner.forEach(el => mark(el, 'data-cs-flat'));   // boxes inside the message box: no second box
+    if (S.surfaces) { const d = findDock(c); if (d) mark(d, 'data-cs-dock'); }
+    touch(c.box, 'msg', false, true);
     if (alphaOf(getComputedStyle(c.inp).backgroundColor) > 0.5) touch(c.inp, 'clear');
+    if (S.surfaces) clearAround(c);
   }
+  // Re-check the message box area while scrolling (some fades only appear or grow then).
+  let scrollPending = false;
+  const onScroll = () => {
+    if (scrollPending || !S.on || !hasBg()) return;
+    scrollPending = true;
+    requestAnimationFrame(() => { scrollPending = false; styleComposer(); });
+  };
+  addEventListener('scroll', onScroll, { capture: true, passive: true });
 
   function sweep() {
     if (!S.on || !S.surfaces || !hasBg() || !document.body) { if (touched.size) restoreAll(); return; }
@@ -384,7 +467,20 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
       o += `html, body { background: transparent !important; }
 main, main > div, main > div > div,
 :where([class*="bg-bg-"]:not([role="menu"], [role="dialog"], [role="listbox"], [role="tooltip"], [data-radix-popper-content-wrapper] *)) { background-color: transparent !important; }
-nav, nav[class], fieldset, fieldset[class] { background-color: ${rgba(S.panel, S.op / 100)} !important; backdrop-filter: ${S.lite ? 'none' : `blur(${S.glass}px) saturate(130%)`} !important; }
+nav, nav[class] { background-color: ${rgba(S.panel, S.op / 100)} !important; backdrop-filter: ${S.lite ? 'none' : `blur(${S.glass}px) saturate(130%)`} !important; }
+fieldset, fieldset[class] { background-color: ${S.msgBg ? rgba(S.msgColor, S.msgOp / 100) : 'transparent'} !important; backdrop-filter: ${S.lite || !S.msgBg ? 'none' : `blur(${S.glass}px) saturate(130%)`} !important; }
+/* everything inside the message box (the Reply field, decoration layers behind the text...) is flattened,
+   so there's only ever one box; buttons, icons and pictures keep their look */
+[data-cs-flat],
+[data-cs-msg] :not(button, button *, [role="button"], [role="button"] *, img, svg, svg *, video, canvas, picture, picture *, [role="menu"], [role="menu"] *, [role="listbox"], [role="listbox"] *, [role="dialog"], [role="dialog"] *, [role="tooltip"], [role="tooltip"] *, [data-radix-popper-content-wrapper] *) { background-color: transparent !important; background-image: none !important; border-color: transparent !important; box-shadow: none !important; outline-color: transparent !important; }
+[data-cs-flat]::before, [data-cs-flat]::after,
+[data-cs-msg] :not(button, button *, [role="button"], [role="button"] *, [role="menu"] *, [role="listbox"] *, [role="dialog"] *, [data-radix-popper-content-wrapper] *)::before,
+[data-cs-msg] :not(button, button *, [role="button"], [role="button"] *, [role="menu"] *, [role="listbox"] *, [role="dialog"] *, [data-radix-popper-content-wrapper] *)::after { background-color: transparent !important; background-image: none !important; border-color: transparent !important; box-shadow: none !important; }
+[data-cs-msg]::before, [data-cs-msg]::after { background-color: transparent !important; background-image: none !important;${S.msgBg ? '' : ' border-color: transparent !important; box-shadow: none !important;'} }
+${S.msgBg ? '' : '[data-cs-msg] { border-color: transparent !important; box-shadow: none !important; outline-color: transparent !important; }'}
+/* the area around the message box: always see-through, including anything added while scrolling */
+[data-cs-dock], [data-cs-dock] :not([data-cs-msg], [data-cs-msg] *, button, button *, [role="button"], [role="button"] *, [role="menu"], [role="menu"] *, [role="dialog"], [role="dialog"] *, [role="listbox"], [role="listbox"] *, [role="tooltip"], [role="tooltip"] *, [data-radix-popper-content-wrapper] *, pre, pre *, code) { background-color: transparent !important; background-image: none !important; border-color: transparent !important; box-shadow: none !important; backdrop-filter: none !important; }
+[data-cs-dock]::before, [data-cs-dock]::after, [data-cs-dock] :not([data-cs-msg], [data-cs-msg] *, button, button *, [role="button"], [role="button"] *, [role="menu"] *, [role="dialog"] *, [role="listbox"] *, [data-radix-popper-content-wrapper] *)::before, [data-cs-dock] :not([data-cs-msg], [data-cs-msg] *, button, button *, [role="button"], [role="button"] *, [role="menu"] *, [role="dialog"] *, [role="listbox"] *, [data-radix-popper-content-wrapper] *)::after { background-color: transparent !important; background-image: none !important; }
 `;
       if (S.surfaces) o += learnedCss() + '\n[data-cs-pseudo]::before, [data-cs-pseudo]::after { background-color: transparent !important; background-image: none !important; }\n';
     }
@@ -408,16 +504,34 @@ main a:not([role="button"]) { color: ${S.accent} !important; }
   function setSheet(css) { try { sheet.replaceSync(css.replace(/@import[^;]*;/g, '')); } catch (e) {} }
 
   let applyTimer = 0;
+  // Re-colour the panels ClaudeStyle already tinted (cheap, so it can run every frame while dragging).
+  function retint() { touched.forEach((t, el) => { if ((t.mode === 'tint' || t.mode === 'msg') && el.isConnected) touch(el, t.mode); }); }
+  let dragging = false, dragTimer = 0;
   function apply() {
     setSheet(buildCss());
     if (S.font) ensureFont(S.font);
     if (S.codeFont) ensureFont(S.codeFont);
-    mount(); loadBitmap(); draw();
-    clearTimeout(applyTimer); applyTimer = setTimeout(sweep, 60);
+    mount(); loadBitmap(); draw(); retint();
+    clearTimeout(applyTimer); applyTimer = setTimeout(sweep, dragging ? 400 : 60);
   }
+  // Saving writes everything (including the background picture), so it waits until changes settle.
+  let saveTimer = 0;
+  function saveSoon(silentFail) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { if (!save() && !silentFail) toast("Couldn't save \u2014 the image is too large. Try a smaller one."); }, 350);
+  }
+  addEventListener('pagehide', () => { if (saveTimer) { clearTimeout(saveTimer); save(); } });
+  let frameQueued = false;
   function commit(silentSaveFail) {
-    if (!save() && !silentSaveFail) toast("Couldn't save — the image is too large. Try a smaller one.");
-    apply(); ui.sync();
+    saveSoon(silentSaveFail);
+    if (frameQueued) return;
+    frameQueued = true;
+    requestAnimationFrame(() => { frameQueued = false; apply(); if (!dragging) ui.sync(); });
+  }
+  // Sliders and colour pickers fire many times a second; mark that a drag is happening.
+  function noteDrag() {
+    dragging = true; clearTimeout(dragTimer);
+    dragTimer = setTimeout(() => { dragging = false; ui.sync(); sweep(); }, 250);
   }
 
   // ---------------------------------------------------------------- panel UI
@@ -635,7 +749,14 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
         <div class="swatches" data-swatches="panel">${PANELS.map(c => `<button class="dot" data-color="${c}" data-style="background:${c}" aria-label="${c}"></button>`).join('')}<label class="pick" title="Custom colour"><input type="color" data-k="panel"></label></div>
         ${slider('op', 'Panel opacity', 0, 100, '%')}
         ${slider('glass', 'Frosted glass', 0, 40, 'px')}
-        ${slider('radius', 'Message box roundness', 0, 28, 'px')}
+      </div>
+      <div class="sec"><h4>Message box</h4>
+        ${toggle('msgBg', 'Background behind your message', 'Makes the text you type easier to read')}
+        <div data-showif="msgBg">
+          <div class="swatches" data-swatches="msgColor">${MSGS.map(c => `<button class="dot" data-color="${c}" data-style="background:${c}" aria-label="${c}"></button>`).join('')}<label class="pick" title="Custom colour"><input type="color" data-k="msgColor"></label></div>
+          ${slider('msgOp', 'Background strength', 0, 100, '%')}
+        </div>
+        ${slider('radius', 'Roundness', 0, 28, 'px')}
       </div>
       <div class="sec"><h4>Accent colour</h4>
         ${toggle('useAccent', 'Use an accent colour', 'Send button, links and text selection')}
@@ -755,6 +876,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
       $$('[data-v]').forEach(el => { el.textContent = S[el.dataset.v] + ($(`input[data-k="${el.dataset.v}"]`).dataset.u || ''); });
       $$('[data-seg] button').forEach(b => b.classList.toggle('on', S[b.closest('[data-seg]').dataset.seg] === b.dataset.val));
       $$('[data-show]').forEach(el => el.classList.toggle('hide', !el.dataset.show.split(' ').includes(S.bgType)));
+      $$('[data-showif]').forEach(el => el.classList.toggle('hide', !S[el.dataset.showif]));
       $$('[data-grad]').forEach(b => b.classList.toggle('on', +b.dataset.grad === S.grad));
       $$('[data-swatches]').forEach(w => w.querySelectorAll('.dot').forEach(d => d.classList.toggle('on', d.dataset.color.toLowerCase() === String(S[w.dataset.swatches]).toLowerCase())));
       $$('[data-fonts] .font').forEach(b => b.classList.toggle('on', b.dataset.font === S.font));
@@ -772,6 +894,14 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
   // ---- events
   root.addEventListener('input', e => {
     const el = e.target, k = el.dataset.k; if (!k) return;
+    if (el.type === 'range' || el.type === 'color') {
+      noteDrag();
+      if (el.type === 'range') {
+        el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+        const lbl = root.querySelector(`[data-v="${k}"]`); if (lbl) lbl.textContent = el.value + (el.dataset.u || '');
+      }
+      if (k === 'accent') { root.host.style.setProperty('--ac', el.value); root.host.style.setProperty('--ac2', rgba(el.value, 0.2)); }
+    }
     S[k] = el.type === 'checkbox' ? el.checked : el.dataset.n !== undefined ? +el.value : el.value;
     if (k === 'accent') S.useAccent = true;
     if (['panel', 'op', 'glass', 'radius', 'accent', 'font', 'grad', 'dim'].includes(k)) S.preset = '';
@@ -789,7 +919,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
     else if (d.val !== undefined && t.closest('[data-seg]')) { const k = t.closest('[data-seg]').dataset.seg; S[k] = d.val; if (k === 'btnMode') { tbTries = 0; S.fabPos = S.fabPos; } commit(); if (k === 'btnMode') { mountToolbar(); placeAll(); } if (d.val === 'image' && !S.bg && !S.bgUrl) $('[data-file]').click(); }
     else if (d.val !== undefined && t.closest('[data-chips]')) { S[t.closest('[data-chips]').dataset.chips] = d.val; commit(); }
     else if (d.grad !== undefined) { S.grad = +d.grad; S.bgType = 'gradient'; S.preset = ''; commit(); }
-    else if (d.color !== undefined) { const k = t.closest('[data-swatches]').dataset.swatches; S[k] = d.color; if (k === 'accent') S.useAccent = true; S.preset = ''; commit(); }
+    else if (d.color !== undefined) { const k = t.closest('[data-swatches]').dataset.swatches; S[k] = d.color; if (k === 'accent') S.useAccent = true; if (k === 'msgColor') S.msgBg = true; S.preset = ''; commit(); }
     else if (d.font !== undefined) { S.font = d.font; S.preset = ''; commit(); }
   });
   $('[data-close]').onclick = () => setOpen(false);
@@ -864,6 +994,8 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
       topLeftButtons: [...document.querySelectorAll('button, a[role="button"]')].filter(b => { const r = b.getBoundingClientRect(); return r.top < 90 && r.left < 600 && r.width > 0; }).slice(0, 10)
         .map(b => ({ label: b.getAttribute('aria-label') || b.title || '', size: Math.round(b.getBoundingClientRect().width) + 'x' + Math.round(b.getBoundingClientRect().height), at: Math.round(b.getBoundingClientRect().left) + ',' + Math.round(b.getBoundingClientRect().top) })),
       bottomBar: at(innerWidth / 2, innerHeight - 60),
+      aboveMessageBox: c ? [20, 60, 120].map(dy => ({ dy, stack: at(c.box.getBoundingClientRect().left + c.box.getBoundingClientRect().width / 2, Math.max(1, c.box.getBoundingClientRect().top - dy)) })) : [],
+      besideMessageBox: c ? at(Math.max(1, c.box.getBoundingClientRect().left - 30), c.box.getBoundingClientRect().top + 20) : [],
       typingArea: up, messageBoxCentre: inp ? at(inp.getBoundingClientRect().left + 40, inp.getBoundingClientRect().top + 10) : [],
       middleOfWindow: at(innerWidth / 2, innerHeight / 2), bottomEdge: at(innerWidth / 2, innerHeight - 8)
     }, null, 1);
@@ -1069,7 +1201,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
 
   // Fully remove ClaudeStyle from this page (used by "ClaudeStyle - Turn off"). Settings are kept.
   function remove() {
-    clearInterval(tick); mo.disconnect(); removeEventListener('keydown', onKey, true);
+    clearInterval(tick); mo.disconnect(); removeEventListener('keydown', onKey, true); removeEventListener('scroll', onScroll, true);
     restoreAll();
     document.adoptedStyleSheets = document.adoptedStyleSheets.filter(x => x !== sheet);
     [cv, host, tb].forEach(el => { if (el && el.isConnected) el.remove(); });
