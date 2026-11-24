@@ -6,7 +6,7 @@
   const DKEY = 'claudeStyleDisabled';   // set when you turn ClaudeStyle off from its panel
   const APPVER = '1.2.0';                 // the release number people see (match the GitHub release tag)
   const REPO = 'https://github.com/0xDonza/ClaudeStyle-Custom-Addon';
-  const VER = '89724da989';                // changes with every build, so a newer copy can replace an older one
+  const VER = '1530cf149b';                // changes with every build, so a newer copy can replace an older one
 
   // ---------------------------------------------------------------- "off" mode
   // Nothing is shown and Claude looks normal. Ctrl+Shift+Y shows a small note with a "Turn on" button.
@@ -65,7 +65,7 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     font: '', customFont: '', codeFont: '', shadow: false,
     useAccent: false, accent: '#d97757', scroll: true, lite: false,
     css: '', preset: '', panPos: null, fabPos: null, panSize: null,
-    msgBg: true, msgColor: '#0d0d0f', msgOp: 65, smartGlass: true, popBg: true, codeBg: true
+    msgBg: true, msgColor: '#0d0d0f', msgOp: 65, smartGlass: true, popBg: true, codeBg: true, msgJoin: true
   };
   let S;
   try { S = { ...DEF, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) { S = { ...DEF }; }
@@ -291,9 +291,10 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
       const sig = sig0.endsWith('|pseudo') ? sig0.slice(0, -7) + NOPOP + '|pseudo' : sig0 + NOPOP;
       if (sig.endsWith('|pseudo')) { const b = sig.slice(0, -7); return `${b}::before, ${b}::after { background-color: transparent !important; background-image: none !important; }`; }
       const img = v.endsWith('+img') ? ' background-image: none !important;' : '';
+      // the message box: colour AND rounded corners from the first frame (not only once the check has run)
       if (v.startsWith('msg')) return S.msgBg
-        ? `${sig} { ${glassDecl(rgba(S.msgColor, S.msgOp / 100))} }`
-        : `${sig} { background-color: transparent !important; backdrop-filter: none !important;${img} }`;
+        ? `${sig} { ${glassDecl(rgba(S.msgColor, S.msgOp / 100))} border-radius: ${S.radius}px !important; }`
+        : `${sig} { background-color: transparent !important; backdrop-filter: none !important;${img} border-radius: ${S.radius}px !important; }`;
       if (v.startsWith('tint')) return `${sig} { ${glassDecl(tint)} }`;
       return `${sig} { background-color: transparent !important;${img} }`;
     }).join('\n');
@@ -439,40 +440,25 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
       if (framed && r.width >= 280) box = el;
     }
     if (!box) return null;
+    // In a started chat the + / mic / model row sits just UNDER the box. Then the card is the wrapper
+    // holding both, so the row gets the same background and scrolling text can't show through it.
+    if (S.msgJoin) {
+      const br = box.getBoundingClientRect();
+      for (let a = box.parentElement, i = 0; a && i < 3 && a !== document.body; a = a.parentElement, i++) {
+        const r = a.getBoundingClientRect();
+        if (r.width > br.width + 48 || r.height > br.height + 90) break;
+        const extra = [...a.querySelectorAll('button')].some(b => !box.contains(b) && !host.contains(b) && b.getBoundingClientRect().top >= br.bottom - 4);
+        if (r.height >= br.height + 16 && extra) {
+          if (!chain.some(c => c.el === box)) chain.push({ el: box });
+          box = a; break;
+        }
+      }
+    }
     return { inp, box, inner: chain.filter(c => c.el !== box && box.contains(c.el)).map(c => c.el) };
   }
   // Everything around the message box: the layers behind it and the fade strip above it (which often
   // only appears, or grows, while you scroll). Gradients, see-through fills and ::before/::after count too.
   const isGrad = img => /gradient\(/.test(img) && !/url\(/.test(img);
-  // Some bars are decorative layers that ignore the mouse, so normal "what's here" checks can't see them.
-  // For a moment, make everything count, look beside and under the message box, then put it back.
-  const peSheet = new CSSStyleSheet(); try { peSheet.replaceSync('* { pointer-events: auto !important; }'); } catch (e) {}
-  function stacksAround(c) {
-    const br = c.box.getBoundingClientRect(), vw = innerWidth, vh = innerHeight, y = br.top + br.height / 2;
-    const pts = [[br.left - 24, y], [br.right + 24, y], [br.left + br.width / 2, Math.min(vh - 2, br.bottom + 8)], [br.left - 24, Math.min(vh - 2, br.bottom + 8)]]
-      .filter(([x, yy]) => x > 0 && x < vw && yy > 0 && yy < vh);
-    const prev = document.adoptedStyleSheets;
-    document.adoptedStyleSheets = [...prev, peSheet];
-    let out = [];
-    try { out = pts.map(([x, yy]) => ({ x: Math.round(x), y: Math.round(yy), els: document.elementsFromPoint(x, yy) })); }
-    finally { document.adoptedStyleSheets = prev; }
-    return out;
-  }
-  let hiddenAt = 0;
-  function clearHiddenLayers(c) {
-    if (performance.now() - hiddenAt < 400) return;
-    hiddenAt = performance.now();
-    const br = c.box.getBoundingClientRect();
-    for (const { els } of stacksAround(c)) for (const el of els) {
-      if (el === cv || el === host || el === document.body || el === document.documentElement || c.box.contains(el) || el.contains(c.box) && el.getBoundingClientRect().height > innerHeight * 0.45) continue;
-      if (el.closest(SKIP) || el.closest('#claude-style-cb')) continue;
-      const r = el.getBoundingClientRect();
-      if (r.width < br.width * 0.9 || r.height > innerHeight * 0.45) continue;   // only bar-like layers around the box
-      const cs = getComputedStyle(el), fill = alphaOf(cs.backgroundColor) > 0.3, grad = isGrad(cs.backgroundImage);
-      if (fill || grad) touch(el, 'clear', grad);
-      pseudoNow(el);
-    }
-  }
   function pseudoNow(el) {
     for (const p of ['::before', '::after']) {
       const cs = getComputedStyle(el, p);
@@ -544,7 +530,7 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     if (S.surfaces) { const d = findDock(c); if (d) mark(d, 'data-cs-dock'); }
     touch(c.box, 'msg', false, true);
     if (alphaOf(getComputedStyle(c.inp).backgroundColor) > 0.5) touch(c.inp, 'clear');
-    if (S.surfaces) { clearAround(c); clearHiddenLayers(c); }
+    if (S.surfaces) clearAround(c);
   }
   // Re-check the message box area while scrolling (some fades only appear or grow then).
   let scrollBusy = false, scrollAgain = false;
@@ -947,6 +933,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
       </div>
       <div class="sec"><h4>Message box</h4>
         ${toggle('msgBg', 'Background behind your message', 'Makes the text you type easier to read')}
+        ${toggle('msgJoin', 'Include the row below', 'The + / model row gets the same background, so text scrolling past can\u2019t show through')}
         <div data-showif="msgBg">
           <div class="swatches" data-swatches="msgColor">${MSGS.map(c => `<button class="dot" data-color="${c}" data-style="background:${c}" aria-label="${c}"></button>`).join('')}<label class="pick" title="Custom colour"><input type="color" data-k="msgColor"></label></div>
           ${slider('msgOp', 'Background strength', 0, 100, '%')}
@@ -1027,7 +1014,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
   function setOpen(open) {
     pan.classList.toggle('open', open); fab.classList.toggle('open', open);
     if (tb) tb.setAttribute('aria-expanded', open);
-    if (open) { ui.sync(); setTab(tab); preloadPreviewFonts(); requestAnimationFrame(placeAll); }
+    if (open) { ui.sync(); setTab(tab); preloadPreviewFonts(); requestAnimationFrame(placeAll); try { console.log('__claudestyle:diag'); } catch (e) {} }
   }
   const isOpen = () => pan.classList.contains('open');
   function setTab(i) {
@@ -1198,7 +1185,22 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
         .map(b => ({ label: b.getAttribute('aria-label') || b.title || '', size: Math.round(b.getBoundingClientRect().width) + 'x' + Math.round(b.getBoundingClientRect().height), at: Math.round(b.getBoundingClientRect().left) + ',' + Math.round(b.getBoundingClientRect().top) })),
       bottomBar: at(innerWidth / 2, innerHeight - 60),
       aboveMessageBox: c ? [20, 60, 120].map(dy => ({ dy, stack: at(c.box.getBoundingClientRect().left + c.box.getBoundingClientRect().width / 2, Math.max(1, c.box.getBoundingClientRect().top - dy)) })) : [],
-      hiddenLayers: c ? stacksAround(c).map(p => ({ at: p.x + ',' + p.y, stack: p.els.slice(0, 10).map(el => { const d = desc(el), cs = getComputedStyle(el); return d && { ...d, pe: cs.pointerEvents, shadow2: cs.boxShadow === 'none' ? '' : cs.boxShadow.slice(0, 60), mask: (cs.maskImage || cs.webkitMaskImage || 'none').slice(0, 50), blur: cs.backdropFilter, op: cs.opacity, z: cs.zIndex }; }) })) : [],
+      appParts,
+      // why clicks might not reach the page: what's on top at a few spots, and anything switched off for the mouse
+      clickCheck: (() => {
+        const de = document.documentElement, b = document.body, pe = el => el ? getComputedStyle(el).pointerEvents + (el.style.pointerEvents ? ' (set: ' + el.style.pointerEvents + ')' : '') : '';
+        const spots = [[innerWidth / 2, innerHeight / 3], [innerWidth / 2, innerHeight / 2], [innerWidth * 0.8, innerHeight / 2], [innerWidth * 0.25, innerHeight / 2]];
+        return { stuckRule: document.adoptedStyleSheets.some(isStuckRule), sheets: document.adoptedStyleSheets.length, html: pe(de), body: pe(b), inert: document.querySelectorAll('[inert]').length, openLayers: document.querySelectorAll('[data-state="open"]').length,
+          noMouse: [...document.querySelectorAll('body > *, body > * > *')].filter(el => getComputedStyle(el).pointerEvents === 'none').slice(0, 6).map(el => el.tagName.toLowerCase() + ' ' + String(el.getAttribute('class') || '').slice(0, 60)),
+          top: spots.map(([x, y]) => ({ at: Math.round(x) + ',' + Math.round(y), els: document.elementsFromPoint(x, y).slice(0, 3).map(el => { const d = desc(el); return d && (d.tag + ' ' + d.cls.slice(0, 70) + ' ' + d.size + ' ' + d.pos + ' z' + getComputedStyle(el).zIndex + ' pe:' + getComputedStyle(el).pointerEvents); }) })) };
+      })(),
+      // for each button in and around the message box: is it what the mouse actually reaches?
+      boxButtons: c ? [...(c.box.parentElement || c.box).querySelectorAll('button')].filter(bt => !host.contains(bt)).slice(0, 10).map(bt => {
+        const r = bt.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, top = document.elementFromPoint(x, y);
+        const ok = !!top && (top === bt || bt.contains(top));
+        return { label: (bt.getAttribute('aria-label') || bt.textContent || '').trim().slice(0, 30), at: Math.round(x) + ',' + Math.round(y), reachable: ok,
+          coveredBy: ok || !top ? '' : (d => d && (d.tag + ' ' + d.cls.slice(0, 90) + ' ' + d.size + ' ' + d.pos + ' z' + getComputedStyle(top).zIndex))(desc(top)) };
+      }) : [],
       besideMessageBox: c ? at(Math.max(1, c.box.getBoundingClientRect().left - 30), c.box.getBoundingClientRect().top + 20) : [],
       typingArea: up, messageBoxCentre: inp ? at(inp.getBoundingClientRect().left + 40, inp.getBoundingClientRect().top + 10) : [],
       middleOfWindow: at(innerWidth / 2, innerHeight / 2), bottomEdge: at(innerWidth / 2, innerHeight - 8)
@@ -1232,7 +1234,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
     try { console.log('__claudestyle:open:' + url); } catch (e) {}
     linkTimer = setTimeout(() => { try { window.open(url, '_blank', 'noopener'); } catch (e) {} }, 700);   // if nothing in Claude picked it up
   }
-  let linkTimer = 0, latest = null;
+  let linkTimer = 0, latest = null, appParts = null;
   const verNum = v => { const m = String(v || '').match(/(\d+)\.(\d+)\.(\d+)/); return m ? [+m[1], +m[2], +m[3]] : null; };
   const newer = (a, b) => { for (let i = 0; i < 3; i++) { if (a[i] !== b[i]) return a[i] > b[i]; } return false; };
   // Called by the helper inside Claude with the newest GitHub release (checked at most once a day).
@@ -1478,8 +1480,10 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
   addEventListener('keydown', onKey, true);
 
   // ---------------------------------------------------------------- keep everything attached
+  const isStuckRule = x => { try { return x !== sheet && x.cssRules.length === 1 && x.cssRules[0].selectorText === '*' && /pointer-events:\s*auto\s*!important/.test(x.cssRules[0].cssText); } catch (e) { return false; } };
   function mount() {
     const de = document.documentElement; if (!de) return;
+    if (document.adoptedStyleSheets.some(isStuckRule)) document.adoptedStyleSheets = document.adoptedStyleSheets.filter(x => !isStuckRule(x));
     const a = document.adoptedStyleSheets;
     if (a[a.length - 1] !== sheet) document.adoptedStyleSheets = [...a.filter(x => x !== sheet), sheet]; // stay last so we win
     if (!cv.isConnected) de.appendChild(cv);
@@ -1556,7 +1560,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
     dormant(true, css);
   }
   window.__claudeMod = { setFileCss(css) { if (css !== fileCss) { fileCss = css; apply(); } }, open: () => setOpen(true), toggle: () => setOpen(!isOpen()),
-    shellButton(on) { shellTb = !!on; ui.sync(); }, remove, turnOff, wake() {}, ver: VER, updateInfo, linkOpened() { clearTimeout(linkTimer); } };
+    shellButton(on) { shellTb = !!on; ui.sync(); }, remove, turnOff, wake() {}, ver: VER, updateInfo, linkOpened() { clearTimeout(linkTimer); }, diag(l) { appParts = l; } };
   apply(); mountToolbar(); ui.sync(); setTab(0);
   }
 

@@ -1,19 +1,19 @@
 // main-inject.js — runs inside Claude's main process (via Developer > Enable Main Process Debugger).
 // Loads ClaudeStyle (mod.js) into Claude's chat windows now and every time they reload, and puts the
 // palette button into the window's own toolbar (which is a separate part of the app from the chat).
-// The placeholders (__MOD__, __CSS__, __DIR__, __STARTUP__) are filled in by ClaudeStyle.ps1.
+// The four placeholders below (ClaudeStyle's code, theme.css, its folder, the startup shortcut) are filled in by ClaudeStyle.ps1.
 (() => {
   const req = typeof require === 'function' ? require
     : (process.mainModule ? process.mainModule.require.bind(process.mainModule) : null);
   if (!req) return 'error: no require';
-  const { app, webContents } = req('electron');
+  const { app, webContents, BrowserWindow } = req('electron');
   const st = globalThis.__claudeStyle || (globalThis.__claudeStyle = {});
   st.mod = __MOD__;
   st.css = __CSS__;
   st.dir = __DIR__;           // ClaudeStyle's folder (where the "off" marker lives)
   st.startup = __STARTUP__;   // the "start with Windows" shortcut
   st.off = false;
-  if (!st.btnMode) st.btnMode = 'toolbar';
+  if (!st.btnMode) st.btnMode = 'composer';
 
   // The helper only runs while ClaudeStyle is switched on, so anything it loads clears the page's "off" note.
   const code = () => "try { localStorage.removeItem('claudeStyleDisabled'); } catch (e) {}\n" + st.mod + '\n;window.__claudeMod && window.__claudeMod.setFileCss(' + JSON.stringify(st.css) + ');';
@@ -24,6 +24,17 @@
   const isFrame = wc => /^(app|file):/i.test(url(wc));
   const run = (wc, js) => { try { if (!wc.isDestroyed()) wc.executeJavaScript(js, true).catch(() => {}); } catch (e) {} };
   const chats = () => webContents.getAllWebContents().filter(isChat);
+  // The window's own frame (title bar / toolbar) only: never other built-in parts of the app such as
+  // Claude Code's browser panel, which can look similar.
+  const isWindowFrame = wc => { try { const w = BrowserWindow && BrowserWindow.fromWebContents(wc); return !!w && w.webContents === wc; } catch (e) { return false; } };
+  const needsFrame = () => st.btnMode === 'toolbar' || st.btnMode === 'sidebar-frame';
+  // Put the toolbar helper where it's wanted and take it out of everywhere else.
+  function syncFrames() {
+    webContents.getAllWebContents().filter(isFrame).forEach(w => {
+      if (needsFrame() && isWindowFrame(w)) run(w, FRAME + ';window.__csShell && window.__csShell.mode(' + JSON.stringify(st.btnMode) + ')');
+      else run(w, 'window.__csShell && window.__csShell.remove()');
+    });
+  }
 
   // Palette button for the window's toolbar. Built without innerHTML so strict pages accept it.
   // A click is passed on through the console (the main process listens and opens the panel in the chat).
@@ -150,9 +161,18 @@
         try { req('electron').shell.openExternal(link); run(wc, 'window.__claudeMod && window.__claudeMod.linkOpened && window.__claudeMod.linkOpened()'); } catch (e) {}
       }
     }
+    else if (msg === '__claudestyle:diag') {
+      // for "Copy debug info": which parts of the app exist (addresses shortened, no page contents)
+      const list = webContents.getAllWebContents().map(w => {
+        let u = url(w); try { const x = new URL(u); u = /claude\.ai$/.test(x.hostname) || /^(app|file):/.test(x.protocol) ? x.protocol + '//' + x.host + x.pathname.slice(0, 40) : x.protocol + '//' + x.host; } catch (e) {}
+        let t = ''; try { t = w.getType(); } catch (e) {}
+        return { url: u, type: t, windowFrame: isWindowFrame(w), chat: isChat(w), frameHelper: isFrame(w) };
+      });
+      run(wc, 'window.__claudeMod && window.__claudeMod.diag && window.__claudeMod.diag(' + JSON.stringify(list) + ')');
+    }
     else if (msg.indexOf('__claudestyle:btn:') === 0) {
       st.btnMode = msg.slice(18);
-      webContents.getAllWebContents().filter(isFrame).forEach(w => run(w, 'window.__csShell && window.__csShell.mode(' + JSON.stringify(st.btnMode) + ')'));
+      syncFrames();
     }
   };
   // Newest ClaudeStyle release on GitHub (read-only; nothing is downloaded). Checked at most once a day.
@@ -195,10 +215,9 @@
   st.inject = wc => {
     if (st.off) return;
     listen(wc);
-    // Prefer claude.ai windows; if the app shows none, fall back to any web page window.
-    const anyChat = webContents.getAllWebContents().some(isChat);
-    if (anyChat ? isChat(wc) : isPage(wc)) { run(wc, code()); setTimeout(() => { tellUpdate(wc); checkUpdate(); }, 4000); }
-    else if (anyChat && isFrame(wc)) run(wc, FRAME + ';window.__csShell && window.__csShell.mode(' + JSON.stringify(st.btnMode) + ')');
+    // ClaudeStyle itself goes into claude.ai pages only; the toolbar helper only into the window frame, and only if wanted.
+    if (isChat(wc)) { run(wc, code()); setTimeout(() => { tellUpdate(wc); checkUpdate(); }, 4000); }
+    else if (isFrame(wc)) { if (needsFrame() && isWindowFrame(wc)) run(wc, FRAME + ';window.__csShell && window.__csShell.mode(' + JSON.stringify(st.btnMode) + ')'); else run(wc, 'window.__csShell && window.__csShell.remove()'); }
   };
   if (!st.hooked) {
     st.hooked = true;
