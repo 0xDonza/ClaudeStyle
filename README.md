@@ -3,7 +3,7 @@
 **Make the Claude desktop app look the way *you* want.**
 Add your own wallpaper, frosted-glass panels, new fonts and colours, all from a panel built right into Claude.
 
-<img width="1326" height="781" alt="image" src="https://github.com/user-attachments/assets/2b7c7144-6c22-48d6-8e16-048a040a567f" />
+https://github.com/user-attachments/assets/67d84b1d-d322-4df5-9a5b-10947b837ccb
 
 
 ---
@@ -12,7 +12,7 @@ Add your own wallpaper, frosted-glass panels, new fonts and colours, all from a 
 
 | Feature | What it does |
 |---|---|
-| 🖼️ **Backdrop** | Use any picture as your wallpaper (just drag it in), or pick one of 8 gradients. Darken it, blur it, or turn the colour up or down. |
+| 🖼️ **Backdrop** | Use any picture as your wallpaper, or an **animated one** (GIF, MP4 or WebM), or pick one of 8 gradients. Darken it, blur it, or turn the colour up or down. |
 | 🎭 **Themes** | 8 one-click looks: Glass Night, Aurora, Sunset, Sakura, Ocean, Terminal, Cozy and Playful. |
 | 🪟 **Style** | Frosted-glass panels and message box, dark readable popups (Search, menus), an accent colour, rounder or squarer corners, slim scrollbars. |
 | 🔤 **Fonts** | 10 fonts built in (Inter, Nunito, Poppins, Outfit and more), or any font on your PC. Your code font can be different too. |
@@ -58,7 +58,7 @@ Want the button somewhere else? Open the panel, go to **More**, and pick **Sideb
 | Tab | What's there |
 |---|---|
 | **Themes** | One-click looks. Click one and you're done. Changed your mind? Click **Undo**. |
-| **Backdrop** | Choose **Image**, **Gradient** or **None**. Drag a picture onto the box to use it. |
+| **Backdrop** | Choose **Image**, **Animated**, **Gradient** or **None**, and drag a file onto the box. Animated backgrounds (GIF, MP4 or WebM) have a **Performance** setting — Smooth / Balanced / Battery saver — so you control how much power they use. |
 | **Style** | Panel colour, see-through amount, glass blur, **Dark popups**, **Smart glass**, **Message box** (background on/off, colour, strength), accent colour, and **Reduce effects**. |
 | **Text** | Pick a font. Each one shows a preview in its own style. |
 | **More** | Quick CSS, copy or paste themes, where the 🎨 button lives, turn off, debug info, and reset. |
