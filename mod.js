@@ -6,7 +6,7 @@
   const DKEY = 'claudeStyleDisabled';   // set when you turn ClaudeStyle off from its panel
   const APPVER = '1.2.0';                 // the release number people see (match the GitHub release tag)
   const REPO = 'https://github.com/0xDonza/ClaudeStyle-Custom-Addon';
-  const VER = '1530cf149b';                // changes with every build, so a newer copy can replace an older one
+  const VER = '198fe8b3f7';                // changes with every build, so a newer copy can replace an older one
 
   // ---------------------------------------------------------------- "off" mode
   // Nothing is shown and Claude looks normal. Ctrl+Shift+Y shows a small note with a "Turn on" button.
@@ -65,7 +65,8 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     font: '', customFont: '', codeFont: '', shadow: false,
     useAccent: false, accent: '#d97757', scroll: true, lite: false,
     css: '', preset: '', panPos: null, fabPos: null, panSize: null,
-    msgBg: true, msgColor: '#0d0d0f', msgOp: 65, smartGlass: true, popBg: true, codeBg: true, msgJoin: true
+    msgBg: true, msgColor: '#0d0d0f', msgOp: 65, smartGlass: true, popBg: true, codeBg: true, msgJoin: true,
+    anim: null, animPerf: 'balanced'
   };
   let S;
   try { S = { ...DEF, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch (e) { S = { ...DEF }; }
@@ -86,25 +87,32 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
   // ---------------------------------------------------------------- built-in looks
+  // Each gradient is a soft mesh of four tones: a deep base, a mid, a bright, and a pop of colour.
   const GRADS = [
-    { name: 'Midnight', c: ['#0b1020', '#16213e', '#3a1c5a'] },
-    { name: 'Aurora',   c: ['#061a24', '#0f4c5c', '#2a9d8f'] },
-    { name: 'Sunset',   c: ['#2b1236', '#8f2d56', '#f08a4b'] },
-    { name: 'Sakura',   c: ['#2e1823', '#94506f', '#e8b4c8'] },
-    { name: 'Ocean',    c: ['#03045e', '#0369a1', '#38bdf8'] },
-    { name: 'Forest',   c: ['#08160f', '#1e3d2f', '#55803a'] },
-    { name: 'Ember',    c: ['#120c0c', '#3d0c11', '#b23a2b'] },
-    { name: 'Graphite', c: ['#0b0b0c', '#1c1d20', '#3b3d42'] }
+    { name: 'Aurora',   c: ['#04141a', '#0b3a42', '#1f9e8f', '#5eead4'] },
+    { name: 'Sunset',   c: ['#1c0b22', '#7a1f4f', '#e0506f', '#ffb067'] },
+    { name: 'Nebula',   c: ['#0b0a1f', '#2e1b63', '#7047d6', '#c77dff'] },
+    { name: 'Coral',    c: ['#1a0e13', '#6e2440', '#e06377', '#ffb4a2'] },
+    { name: 'Midnight', c: ['#070b18', '#141f3e', '#2f4680', '#6d8be0'] },
+    { name: 'Slate',    c: ['#0b0e12', '#1b212e', '#363f52', '#64718d'] },
+    { name: 'Sage',     c: ['#0a120d', '#1b3326', '#3f6b4a', '#8fbf86'] },
+    { name: 'Ember',    c: ['#140a08', '#4a160f', '#a33e20', '#edaa52'] },
+    { name: 'Sakura',   c: ['#190f17', '#5a2a47', '#b86f92', '#f5c6d8'] },
+    { name: 'Terminal', c: ['#060806', '#0c130c', '#163018', '#2f9e44'] }
   ];
+  // A theme is a whole coordinated look, not just a gradient: panel colour, glass, roundness, darken,
+  // font and accent are all tuned together. A spread of bold and calm.
   const PRESETS = [
-    { name: 'Glass Night', s: { bgType: 'gradient', grad: 0, panel: '#0c1222', op: 50, glass: 18, radius: 18, font: 'Inter', useAccent: true, accent: '#7c9cff', dim: 10, shadow: false } },
-    { name: 'Aurora',      s: { bgType: 'gradient', grad: 1, panel: '#06161c', op: 45, glass: 16, radius: 16, font: 'Space Grotesk', useAccent: true, accent: '#2ad4a7', dim: 10, shadow: false } },
-    { name: 'Sunset',      s: { bgType: 'gradient', grad: 2, panel: '#22101c', op: 50, glass: 18, radius: 20, font: 'Outfit', useAccent: true, accent: '#ff8a4c', dim: 20, shadow: true } },
-    { name: 'Sakura',      s: { bgType: 'gradient', grad: 3, panel: '#2a1520', op: 50, glass: 16, radius: 22, font: 'Nunito', useAccent: true, accent: '#f28cb1', dim: 25, shadow: true } },
-    { name: 'Ocean',       s: { bgType: 'gradient', grad: 4, panel: '#04102a', op: 50, glass: 16, radius: 16, font: 'Poppins', useAccent: true, accent: '#38bdf8', dim: 25, shadow: true } },
-    { name: 'Terminal',    s: { bgType: 'gradient', grad: 7, panel: '#070a07', op: 85, glass: 0, radius: 4, font: 'JetBrains Mono', useAccent: true, accent: '#39d353', dim: 0, shadow: false } },
-    { name: 'Cozy',        s: { bgType: 'gradient', grad: 6, panel: '#1a0f0e', op: 55, glass: 12, radius: 24, font: 'Quicksand', useAccent: true, accent: '#f4a261', dim: 15, shadow: false } },
-    { name: 'Playful',     s: { bgType: 'gradient', grad: 5, panel: '#0e1a12', op: 50, glass: 14, radius: 26, font: 'Fredoka', useAccent: true, accent: '#a3e635', dim: 10, shadow: false } }
+    { name: 'Aurora',   s: { bgType: 'gradient', grad: 0, panel: '#06181c', op: 46, glass: 16, radius: 16, font: 'Space Grotesk', useAccent: true, accent: '#2dd4bf', dim: 14, shadow: false } },
+    { name: 'Sunset',   s: { bgType: 'gradient', grad: 1, panel: '#1b0f1a', op: 50, glass: 18, radius: 20, font: 'Outfit', useAccent: true, accent: '#ff8a4c', dim: 24, shadow: true } },
+    { name: 'Nebula',   s: { bgType: 'gradient', grad: 2, panel: '#0e0b22', op: 48, glass: 18, radius: 18, font: 'Poppins', useAccent: true, accent: '#a78bfa', dim: 20, shadow: true } },
+    { name: 'Coral',    s: { bgType: 'gradient', grad: 3, panel: '#1a1013', op: 50, glass: 16, radius: 22, font: 'Nunito', useAccent: true, accent: '#fb7185', dim: 22, shadow: true } },
+    { name: 'Midnight', s: { bgType: 'gradient', grad: 4, panel: '#0b1222', op: 50, glass: 18, radius: 16, font: 'Inter', useAccent: true, accent: '#7c9cff', dim: 12, shadow: false } },
+    { name: 'Slate',    s: { bgType: 'gradient', grad: 5, panel: '#10141c', op: 58, glass: 14, radius: 14, font: 'Inter', useAccent: true, accent: '#93a4c8', dim: 8, shadow: false } },
+    { name: 'Sage',     s: { bgType: 'gradient', grad: 6, panel: '#0d1711', op: 52, glass: 14, radius: 18, font: 'Quicksand', useAccent: true, accent: '#86b082', dim: 12, shadow: false } },
+    { name: 'Ember',    s: { bgType: 'gradient', grad: 7, panel: '#160d0a', op: 54, glass: 12, radius: 20, font: 'Lora', useAccent: true, accent: '#f4a261', dim: 18, shadow: true } },
+    { name: 'Sakura',   s: { bgType: 'gradient', grad: 8, panel: '#190f16', op: 50, glass: 16, radius: 24, font: 'Nunito', useAccent: true, accent: '#f9a8d4', dim: 22, shadow: true } },
+    { name: 'Terminal', s: { bgType: 'gradient', grad: 9, panel: '#070a07', op: 80, glass: 0, radius: 6, font: 'JetBrains Mono', useAccent: true, accent: '#39d353', dim: 4, shadow: false } }
   ];
   const ACCENTS = ['#d97757', '#7c9cff', '#38bdf8', '#2ad4a7', '#a3e635', '#f4a261', '#f28cb1', '#c084fc'];
   const PANELS = ['#101418', '#0c1222', '#06161c', '#22101c', '#1a0f0e', '#000000', '#1f2937', '#ffffff'];
@@ -136,6 +144,77 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
   cv.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:-1;pointer-events:none;display:none';
   let bitmap = null, bitmapKey = '', lastDrawKey = '';
 
+  // ---------------------------------------------------------------- animated background (GIF / video)
+  // The moving wallpaper plays in its own layer behind Claude. The file itself is kept in the page's own
+  // storage (IndexedDB), which handles big files and survives reloads; settings only remember that one is set.
+  const LAYER = 'position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;z-index:-1;pointer-events:none;display:none';
+  const vid = document.createElement('video');
+  vid.id = 'claude-style-vid'; vid.setAttribute('aria-hidden', 'true');
+  vid.muted = true; vid.loop = true; vid.playsInline = true; vid.autoplay = true; vid.disablePictureInPicture = true;
+  vid.style.cssText = LAYER;
+  const gif = document.createElement('img');
+  gif.id = 'claude-style-gif'; gif.setAttribute('aria-hidden', 'true'); gif.alt = '';
+  gif.style.cssText = LAYER;
+  let animUrl = '', animReady = false, animKey = '', videoOK = null;
+
+  // IndexedDB: one little store for the animated wallpaper's bytes.
+  function idb() { return new Promise((res, rej) => { let r; try { r = indexedDB.open('claudeStyleFiles', 1); } catch (e) { return rej(e); } r.onupgradeneeded = () => { try { r.result.createObjectStore('f'); } catch (e) {} }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+  async function idbPut(k, v) { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction('f', 'readwrite'); t.objectStore('f').put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
+  async function idbGet(k) { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction('f', 'readonly'); const q = t.objectStore('f').get(k); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+  async function idbDel(k) { try { const db = await idb(); await new Promise(r => { const t = db.transaction('f', 'readwrite'); t.objectStore('f').delete(k); t.oncomplete = r; t.onerror = r; }); } catch (e) {} }
+
+  const animKind = () => (S.anim && S.anim.kind) || '';   // 'gif' or 'video'
+  const animEl = () => (animKind() === 'gif' ? gif : vid);
+  function clearAnimUrl() { if (animUrl) { try { URL.revokeObjectURL(animUrl); } catch (e) {} animUrl = ''; } }
+
+  // Load the stored animated wallpaper from IndexedDB and start it playing.
+  async function loadAnim() {
+    const want = S.bgType === 'video' && S.anim ? 'anim:' + (S.anim.id || '') + ':' + S.anim.kind : '';
+    if (want === animKey) return;
+    animKey = want; animReady = false;
+    vid.style.display = gif.style.display = 'none';
+    if (!want) { clearAnimUrl(); try { vid.removeAttribute('src'); vid.load(); } catch (e) {} gif.removeAttribute('src'); return; }
+    let blob = null;
+    try { blob = await idbGet('wallpaper'); } catch (e) { blob = null; }
+    if (want !== animKey) return;                       // changed again while we were reading
+    if (!blob) { toast('Your animated wallpaper didn\u2019t load this time. Open Backdrop and choose it again if it doesn\u2019t come back.'); return; }   // keep the setting; don't wipe on a glitch
+    clearAnimUrl(); animUrl = URL.createObjectURL(blob);
+    if (animKind() === 'gif') {
+      gif.onload = () => { if (want === animKey) { animReady = true; videoOK = videoOK === false ? false : videoOK; setSheet(buildCss()); draw(); sweep(); } };
+      gif.onerror = () => { if (want === animKey) animFailed('gif'); };
+      gif.src = animUrl;
+    } else {
+      vid.oncanplay = () => { if (want === animKey) { animReady = true; videoOK = true; applyPerf(); setSheet(buildCss()); draw(); sweep(); } };
+      vid.onerror = () => { if (want === animKey) { videoOK = false; animFailed('video'); } };
+      vid.src = animUrl;
+      try { await vid.play(); } catch (e) {}   // a failed play() isn't fatal; muted autoplay is allowed
+    }
+  }
+  function animFailed(kind) {
+    animReady = false; vid.style.display = gif.style.display = 'none';
+    toast(kind === 'video'
+      ? "That video wouldn't play. Convert it to an MP4 (H.264) and try again, or use a GIF."
+      : "That file couldn't be shown.");
+    ui.sync();
+  }
+  const hasAnim = () => S.on && S.bgType === 'video' && animReady;
+
+  // Performance modes control when the video pauses and how heavy the glass is.
+  // smooth: keep playing unless Claude is minimised. balanced: pause when Claude isn't the active window.
+  // saver: pause when not active, and keep the glass light.
+  function wantPlaying() {
+    if (document.hidden) return false;
+    if (S.animPerf === 'smooth') return true;
+    return document.hasFocus();
+  }
+  function applyPerf() {
+    if (animKind() !== 'video' || !vid.isConnected) return;
+    if (S.bgType !== 'video' || !S.on) { try { vid.pause(); } catch (e) {} return; }
+    if (wantPlaying()) { if (vid.paused) vid.play().catch(() => {}); }
+    else if (!vid.paused) try { vid.pause(); } catch (e) {}
+  }
+  ['focus', 'blur'].forEach(ev => addEventListener(ev, applyPerf));
+
   function dataUrlToBlob(u) {
     const i = u.indexOf(','), head = u.slice(0, i), body = u.slice(i + 1);
     const type = (head.match(/^data:([^;,]+)/) || [])[1] || 'image/jpeg';
@@ -151,6 +230,7 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     try { const r = await createImageBitmap(b, { resizeWidth: Math.round(b.width * k), resizeHeight: Math.round(b.height * k), resizeQuality: 'high' }); b.close && b.close(); return r; } catch (e) { return b; }
   }
   async function loadBitmap() {
+    loadAnim();                                         // keep the animated layer in step too
     const want = S.bgType === 'image' ? (S.bg ? 'bg:' + S.bg.length + S.bg.slice(-40) : S.bgUrl ? 'url:' + S.bgUrl : '') : '';
     if (want === bitmapKey) return;
     bitmapKey = want; if (bitmap && bitmap.close) bitmap.close(); bitmap = null;
@@ -163,31 +243,49 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     } catch (e) { bitmap = null; if (want.startsWith('url:')) toast("That link couldn't be loaded. Try saving the image and choosing it instead."); }
     if (want === bitmapKey) { setSheet(buildCss()); draw(true); sweep(); scheduleGlass(); ui.refreshPreview(); }
   }
-  const hasBg = () => S.on && (S.bgType === 'gradient' || (S.bgType === 'image' && !!bitmap));
+  const hasBg = () => S.on && (S.bgType === 'gradient' || (S.bgType === 'image' && !!bitmap) || hasAnim());
+  const toneFilter = () => `${S.blur ? `blur(${S.blur}px) ` : ''}brightness(${(100 - S.dim) / 100}) saturate(${S.sat}%)`;
+  const toneZoom = () => S.blur ? `scale(${(1 + (S.blur * 4) / Math.max(200, Math.min(innerWidth, innerHeight))).toFixed(4)})` : 'none';
 
+  // A soft "mesh" of overlapping colour blobs over a deep base — richer than a plain fade.
   function paintGradient(g, W, H, cols) {
-    const lg = g.createLinearGradient(0, 0, W, H);
-    lg.addColorStop(0, cols[0]); lg.addColorStop(0.55, cols[1]); lg.addColorStop(1, cols[2]);
-    g.fillStyle = lg; g.fillRect(0, 0, W, H);
+    g.fillStyle = cols[0]; g.fillRect(0, 0, W, H);
+    const M = Math.max(W, H), pop = cols[3] || cols[2];
     const glow = (x, y, r, c, a) => {
       const rg = g.createRadialGradient(x, y, 0, x, y, r);
       rg.addColorStop(0, rgba(c, a)); rg.addColorStop(1, rgba(c, 0));
       g.fillStyle = rg; g.fillRect(0, 0, W, H);
     };
-    glow(W * 0.85, H * 0.1, Math.max(W, H) * 0.6, cols[2], 0.35);
-    glow(W * 0.1, H * 0.95, Math.max(W, H) * 0.5, cols[1], 0.4);
+    glow(W * 0.12, H * 0.06, M * 0.80, cols[1], 0.60);
+    glow(W * 0.92, H * 0.12, M * 0.62, cols[2], 0.55);
+    glow(W * 0.82, H * 0.96, M * 0.75, pop, 0.48);
+    glow(W * 0.04, H * 0.92, M * 0.58, cols[1], 0.42);
+    glow(W * 0.55, H * 0.50, M * 0.48, cols[2], 0.20);
   }
   function paintCover(g, img, W, H, ox, oy, blur) {
     const s = Math.max(W / img.width, H / img.height), w = img.width * s, h = img.height * s, pad = blur * 2;
     g.drawImage(img, ox + (W - w) / 2 - pad, oy + (H - h) / 2 - pad, w + pad * 2, h + pad * 2);
   }
   function draw(fade) {
+    if (S.bgType !== 'video') { vid.style.display = gif.style.display = 'none'; }
+    // Animated wallpaper: show the moving layer, same darken/blur/colour as a still one.
+    if (hasAnim()) {
+      cv.style.display = 'none';
+      const el = animEl(), other = el === vid ? gif : vid; other.style.display = 'none';
+      const tone = toneFilter(), zoom = toneZoom();
+      if (el.style.filter !== tone) el.style.filter = tone;
+      if (el.style.transform !== zoom) el.style.transform = zoom;
+      const showing = el.style.display === 'block';
+      if (!showing) el.style.display = 'block';
+      if ((fade || !showing) && el.animate && !reduceMotion()) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 450, easing: 'ease-out' });
+      lastDrawKey = 'anim'; return;
+    }
     if (!hasBg()) { cv.style.display = 'none'; lastDrawKey = ''; return; }
     // Blur, darken and colour intensity are a filter on top of the picture, done by the graphics card,
     // so dragging those sliders never repaints the picture. A slight zoom hides the blurred edges.
-    const tone = `${S.blur ? `blur(${S.blur}px) ` : ''}brightness(${(100 - S.dim) / 100}) saturate(${S.sat}%)`;
+    const tone = toneFilter();
     if (cv.style.filter !== tone) cv.style.filter = tone;
-    const zoom = S.blur ? `scale(${(1 + (S.blur * 4) / Math.max(200, Math.min(innerWidth, innerHeight))).toFixed(4)})` : 'none';
+    const zoom = toneZoom();
     if (cv.style.transform !== zoom) cv.style.transform = zoom;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const W = Math.max(1, Math.round(innerWidth * dpr)), H = Math.max(1, Math.round(innerHeight * dpr));
@@ -226,7 +324,9 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     } catch (e) { smartOK = false; }
     scheduleGlass();
   })();
-  const smartWanted = () => smartOK && S.smartGlass && !S.lite && hasBg();
+  // Smart glass pre-blurs one still frame; a moving wallpaper can't be pre-blurred, so it uses live glass.
+  const heavyGlassOff = () => S.lite || (S.bgType === 'video' && S.animPerf === 'saver');   // saver skips the costly live blur over video
+  const smartWanted = () => smartOK && S.smartGlass && !S.lite && hasBg() && S.bgType !== 'video';
   function scheduleGlass() { clearTimeout(glassTimer); glassTimer = setTimeout(makeGlass, 120); }
   async function makeGlass() {
     if (!smartWanted()) { if (glassUrl) { const old = glassUrl; glassUrl = ''; glassKey = ''; setSheet(buildCss()); retint(); URL.revokeObjectURL(old); } return; }
@@ -255,7 +355,7 @@ button { font: inherit; border: 0; cursor: pointer; border-radius: 8px; }
     if (glassUrl) return { 'background-color': 'transparent', 'background-image': `linear-gradient(${color}, ${color}), url("${glassUrl}")`,
       'background-size': 'auto, 100vw 100vh', 'background-attachment': 'scroll, fixed', 'background-position': '0 0, 0 0', 'background-repeat': 'no-repeat, no-repeat', 'backdrop-filter': 'none' };
     return { 'background-color': color, 'background-image': 'none', 'background-size': '', 'background-attachment': '', 'background-position': '', 'background-repeat': '',
-      'backdrop-filter': S.lite ? 'none' : `blur(${S.glass}px) saturate(130%)` };
+      'backdrop-filter': heavyGlassOff() ? 'none' : `blur(${S.glass}px) saturate(130%)` };
   }
   const glassDecl = color => Object.entries(glassProps(color)).filter(([, v]) => v !== '').map(([k, v]) => `${k}: ${v} !important;`).join(' ');
 
@@ -641,7 +741,7 @@ fieldset:not([data-cs-msg]), fieldset[class]:not([data-cs-msg]) { background-col
    so there's only ever one box; buttons, icons and pictures keep their look */
 ${S.codeBg ? `[data-cs-code][data-cs-code] { background-color: ${rgba(S.panel, 0.88)} !important; background-image: none !important; border-radius: 12px !important; }
 [data-cs-code] :is(pre, code, pre *, [class*="code" i]) { background-color: transparent !important; background-image: none !important; }` : ''}
-${S.popBg ? `[data-cs-pop][data-cs-pop] { background-color: ${rgba(S.panel, 0.94)} !important; background-image: none !important; backdrop-filter: ${S.lite ? 'none' : 'blur(24px) saturate(130%)'} !important; }` : ''}
+${S.popBg ? `[data-cs-pop][data-cs-pop] { background-color: ${rgba(S.panel, 0.94)} !important; background-image: none !important; backdrop-filter: ${heavyGlassOff() ? 'none' : 'blur(24px) saturate(130%)'} !important; }` : ''}
 [data-cs-flat],
 [data-cs-msg] :not(button, button *, [role="button"], [role="button"] *, img, svg, svg *, video, canvas, picture, picture *, [role="menu"], [role="menu"] *, [role="listbox"], [role="listbox"] *, [role="dialog"], [role="dialog"] *, [role="tooltip"], [role="tooltip"] *, [data-radix-popper-content-wrapper] *) { background-color: transparent !important; background-image: none !important; border-color: transparent !important; box-shadow: none !important; outline-color: transparent !important; }
 [data-cs-flat]::before, [data-cs-flat]::after,
@@ -683,7 +783,7 @@ main a:not([role="button"]) { color: ${S.accent} !important; }
     setSheet(buildCss());
     if (S.font) ensureFont(S.font);
     if (S.codeFont) ensureFont(S.codeFont);
-    mount(); loadBitmap(); draw(); retint(); scheduleGlass();
+    mount(); loadBitmap(); draw(); retint(); scheduleGlass(); applyPerf();
     if (!S.codeBg || !S.on) document.querySelectorAll('[data-cs-code]').forEach(el => el.removeAttribute('data-cs-code'));
     clearTimeout(applyTimer); applyTimer = setTimeout(sweep, dragging ? 400 : 60);
   }
@@ -759,6 +859,8 @@ button, input, textarea { font: inherit; color: inherit; }
 .page.on { display: block; animation: pageIn .26s cubic-bezier(.2,.8,.2,1); }
 @keyframes pageIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .sec { margin: 4px 0 16px; }
+.danger-sec { border-top: 1px solid rgba(255,255,255,.07); padding-top: 12px; }
+.pan details summary { list-style: none; } .pan details summary::-webkit-details-marker { display: none; }
 .sec h4 { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #8d8d98; }
 .hint { color: #8d8d98; font-size: 12px; line-height: 1.45; margin: 6px 0 0; }
 
@@ -878,7 +980,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
   const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   const ICON_CHECK = '<svg class="ck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
   const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const gradCss = cols => `linear-gradient(135deg, ${cols[0]}, ${cols[1]} 55%, ${cols[2]})`;
+  const gradCss = c => `radial-gradient(60% 70% at 12% 6%, ${c[1]}, transparent 60%), radial-gradient(55% 60% at 92% 12%, ${c[2]}, transparent 60%), radial-gradient(75% 75% at 82% 96%, ${c[3] || c[2]}, transparent 60%), radial-gradient(60% 60% at 4% 92%, ${c[1]}, transparent 60%), ${c[0]}`;
   const slider = (k, label, min, max, unit) => `<div class="sl"><div class="top"><span>${label}</span><b data-v="${k}"></b></div><input type="range" min="${min}" max="${max}" data-k="${k}" data-n data-u="${unit}" aria-label="${label}"></div>`;
   const toggle = (k, label, sub) => `<label class="sw"><span class="t">${label}${sub ? `<small>${sub}</small>` : ''}</span><input type="checkbox" data-k="${k}"><span class="tg"></span></label>`;
   const fontNames = Object.keys(FONTS);
@@ -905,21 +1007,29 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
       </div>
     </div>
     <div class="page" data-page="1">
-      <div class="seg" data-seg="bgType"><button data-val="image">Image</button><button data-val="gradient">Gradient</button><button data-val="none">None</button></div>
-      <div data-show="image">
+      <div class="seg" data-seg="bgType"><button data-val="image">Image</button><button data-val="video">Animated</button><button data-val="gradient">Gradient</button><button data-val="none">None</button></div>
+      <div data-show="image video">
         <div class="drop" data-drop tabindex="0"><div class="lbl" data-droplbl>Drop an image here<br>or click to choose one</div></div>
-        <input type="file" accept="image/*" hidden data-file>
-        <div class="row"><button class="btn" data-pick>Choose image…</button><button class="btn danger" data-clear>Remove</button><span data-style="flex:1"></span><button class="link" data-showurl>Use a link</button></div>
-        <div class="row hide" data-urlrow><input type="text" placeholder="https://… image link" data-urlinput><button class="btn" data-seturl>Use</button></div>
+        <input type="file" accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime" hidden data-file>
+        <div class="row"><button class="btn" data-pick>Choose file…</button><button class="btn danger" data-clear>Remove</button><span data-style="flex:1"></span><button class="link" data-showurl data-show="image">Use a link</button></div>
+        <div class="row hide" data-urlrow data-show="image"><input type="text" placeholder="https://… image link" data-urlinput><button class="btn" data-seturl>Use</button></div>
+      </div>
+      <div data-show="video">
+        <p class="hint" data-style="margin-top:2px">GIF, MP4 or WebM. Up to 60 MB. A moving wallpaper uses more power than a still one — the settings below keep that in check.</p>
+        <div class="sec" data-style="margin-top:8px"><h4>Performance</h4>
+          <div class="seg" data-seg="animPerf"><button data-val="smooth" title="Always plays smoothly — uses the most power">Smooth</button><button data-val="balanced" title="Pauses when Claude isn't the window you're using">Balanced</button><button data-val="saver" title="Pauses when away and keeps effects light">Battery saver</button></div>
+          <p class="hint" data-style="margin-top:-2px">Balanced pauses the video whenever you click away from Claude, so it isn't running while you work elsewhere.</p>
+        </div>
+        <p class="hint hide" data-vidnote>This version of Claude blocked the video. Try a GIF instead, or an MP4/WebM.</p>
       </div>
       <div data-show="gradient"><div class="grads">${GRADS.map((g, i) => `<button class="grad" data-grad="${i}" data-style="background:${gradCss(g.c)}" aria-label="${g.name}"><span>${g.name}</span></button>`).join('')}</div></div>
-      <div data-show="image gradient">
+      <div data-show="image video gradient">
         ${slider('dim', 'Darken', 0, 85, '%')}
         ${slider('blur', 'Blur', 0, 30, 'px')}
         ${slider('sat', 'Colour intensity', 0, 200, '%')}
         ${toggle('surfaces', 'See-through app', 'Lets the backdrop show behind the chat')}
       </div>
-      <p class="hint" data-show="none">Claude's normal background. Pick an image or a gradient to give it a backdrop.</p>
+      <p class="hint" data-show="none">Claude's normal background. Pick an image, an animated file or a gradient to give it a backdrop.</p>
     </div>
     <div class="page" data-page="2">
       <div class="sec"><h4>Panels</h4>
@@ -963,30 +1073,30 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
       </div>
     </div>
     <div class="page" data-page="4">
-      <div class="sec"><h4>Quick CSS</h4>
-        <textarea spellcheck="false" placeholder="/* Your own CSS — applied as you type */&#10;main { letter-spacing: .2px; }" data-k="css"></textarea>
-        <p class="hint">Right-click anything in Claude and choose Inspect to find what to style.</p>
+      <div class="sec"><h4>Where's the button?</h4>
+        <div class="seg" data-seg="btnMode"><button data-val="composer" title="Next to the + in the message box">Chat</button><button data-val="sidebar" title="In the left sidebar">Sidebar</button><button data-val="toolbar" title="Next to the back/forward arrows">Top</button><button data-val="float" title="A floating button you can drag">Float</button><button data-val="hidden" title="No button">Off</button></div>
+        <p class="hint" data-style="margin-top:-4px"><span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">Y</span> always opens this panel.</p>
       </div>
       <div class="sec"><h4>Share your theme</h4>
         <div class="row" data-style="margin-top:0"><button class="btn" data-export>Copy theme</button><button class="btn" data-import>Paste theme…</button></div>
         <div class="hide" data-importbox><textarea data-style="height:90px;margin-top:8px" placeholder="Paste a copied theme here" data-importtext></textarea><div class="row"><button class="btn pri" data-importapply>Apply</button><button class="btn" data-importcancel>Cancel</button></div></div>
+        <p class="hint">Copy shares your colours, fonts and settings. A small uploaded image goes too; large images and animated wallpapers don’t (the file can’t travel).</p>
       </div>
-      <div class="sec"><h4>Panel</h4>
-        <div class="seg" data-seg="btnMode"><button data-val="composer" title="Next to the + in the message box">Chat</button><button data-val="sidebar" title="In the left sidebar">Sidebar</button><button data-val="toolbar" title="Next to the back/forward arrows">Top</button><button data-val="float" title="A floating button you can drag">Float</button><button data-val="hidden" title="No button">Off</button></div>
-        <p class="hint" data-style="margin-top:-4px">Ctrl+Shift+Y always opens this panel.</p>
+      <div class="sec"><h4>Your own CSS</h4>
+        <details><summary class="link">Open the CSS box</summary>
+          <textarea spellcheck="false" data-style="margin-top:8px" placeholder="/* Applied as you type */&#10;main { letter-spacing: .2px; }" data-k="css"></textarea>
+          <p class="hint">Advanced. Right-click anything in Claude → Inspect to find what to style.</p>
+        </details>
       </div>
-      <div class="sec"><h4>Turn off</h4>
-        <button class="btn danger" data-turnoff>Turn off ClaudeStyle</button>
-        <p class="hint">Shuts ClaudeStyle down completely: Claude goes back to normal and it stops starting with Windows. Your settings are kept. To turn it back on, press <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">Y</span> (until Claude restarts) or open the ClaudeStyle shortcut.</p>
-      </div>
-      <div class="sec"><h4>Help</h4>
+      <div class="sec"><h4>Having trouble?</h4>
         <button class="btn" data-debug>Copy debug info</button>
-        <p class="hint">If something looks wrong, click this and paste it to whoever is helping you. It only contains layout details (no chat text).</p>
+        <p class="hint">Click this and paste it to whoever's helping you. It only contains layout details — never your chats.</p>
       </div>
-      <div class="sec"><h4>Start over</h4>
-        <button class="btn danger" data-reset>Reset everything</button>
-        <p class="hint">Shortcut: <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">Y</span> opens this panel. <span class="kbd">Esc</span> closes it. Drag the panel by its title to move it (the floating button can be dragged too). Drag the bottom-right corner to resize. Double-click the title (or the corner) to put it back.</p>
+      <div class="sec danger-sec"><h4>Turn off or reset</h4>
+        <div class="row" data-style="margin-top:0"><button class="btn danger" data-turnoff>Turn off</button><button class="btn danger" data-reset>Reset everything</button></div>
+        <p class="hint"><b>Turn off</b> shuts ClaudeStyle down and stops it starting with Windows (your settings are kept). <b>Reset</b> clears your settings back to default. Turn back on any time with <span class="kbd">Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">Y</span> or the ClaudeStyle shortcut.</p>
       </div>
+      <p class="hint" data-style="margin-top:4px">Drag the panel by its title to move it, or the bottom-right corner to resize. Double-click either to reset.</p>
     </div>
   </div>
   <div class="credit">Made by <b>Donza</b> · v${APPVER} · <a data-link="${REPO}">GitHub</a><a class="upd hide" data-update></a></div>
@@ -1036,7 +1146,9 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
     let c = drop.querySelector('canvas');
     const img = S.bgType === 'image' && bitmap;
     drop.classList.toggle('has', !!img);
-    $('[data-droplbl]').innerHTML = img ? 'Drop or click to change' : 'Drop an image here<br>or click to choose one';
+    const vmode = S.bgType === 'video';
+    $('[data-droplbl]').innerHTML = img || (vmode && S.anim) ? 'Drop or click to change'
+      : vmode ? 'Drop a GIF or video here<br>or click to choose one' : 'Drop an image here<br>or click to choose one';
     if (!img) { if (c) c.remove(); return; }
     if (!c) { c = document.createElement('canvas'); drop.prepend(c); }
     const r = drop.getBoundingClientRect(), W = Math.round((r.width || 340) * 2), H = Math.round((r.height || 128) * 2);
@@ -1060,6 +1172,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
       $$('[data-show]').forEach(el => el.classList.toggle('hide', !el.dataset.show.split(' ').includes(S.bgType)));
       $$('[data-showif]').forEach(el => el.classList.toggle('hide', !S[el.dataset.showif]));
       $('[data-smartnote]').classList.toggle('hide', !(S.smartGlass && smartOK === false));
+      $('[data-vidnote]').classList.toggle('hide', !(S.bgType === 'video' && animKind() === 'video' && videoOK === false));
       $$('[data-grad]').forEach(b => b.classList.toggle('on', +b.dataset.grad === S.grad));
       $$('[data-swatches]').forEach(w => w.querySelectorAll('.dot').forEach(d => d.classList.toggle('on', d.dataset.color.toLowerCase() === String(S[w.dataset.swatches]).toLowerCase())));
       $$('[data-fonts] .font').forEach(b => b.classList.toggle('on', b.dataset.font === S.font));
@@ -1105,7 +1218,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
       Object.assign(S, p.s, { preset: p.name, on: true }); commit();
       undoable(`Applied “${p.name}”`, before);
     }
-    else if (d.val !== undefined && t.closest('[data-seg]')) { const k = t.closest('[data-seg]').dataset.seg; S[k] = d.val; if (k === 'btnMode') { tbTries = 0; S.fabPos = S.fabPos; } commit(); if (k === 'btnMode') { mountToolbar(); placeAll(); } if (d.val === 'image' && !S.bg && !S.bgUrl) $('[data-file]').click(); }
+    else if (d.val !== undefined && t.closest('[data-seg]')) { const k = t.closest('[data-seg]').dataset.seg; S[k] = d.val; if (k === 'btnMode') { tbTries = 0; S.fabPos = S.fabPos; } commit(); if (k === 'btnMode') { mountToolbar(); placeAll(); } if (k === 'animPerf') applyPerf(); if (d.val === 'image' && !S.bg && !S.bgUrl) $('[data-file]').click(); if (d.val === 'video' && !S.anim) $('[data-file]').click(); }
     else if (d.val !== undefined && t.closest('[data-chips]')) { S[t.closest('[data-chips]').dataset.chips] = d.val; commit(); }
     else if (d.grad !== undefined) { S.grad = +d.grad; S.bgType = 'gradient'; S.preset = ''; commit(); }
     else if (d.color !== undefined) { const k = t.closest('[data-swatches]').dataset.swatches; S[k] = d.color; if (k === 'accent') S.useAccent = true; if (k === 'msgColor') S.msgBg = true; S.preset = ''; commit(); }
@@ -1116,7 +1229,10 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
   $('[data-pick]').onclick = () => $('[data-file]').click();
   drop.onclick = () => $('[data-file]').click();
   drop.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('[data-file]').click(); } };
-  $('[data-clear]').onclick = () => { const before = { ...S }; S.bg = ''; S.bgUrl = ''; S.bgType = 'none'; commit(); undoable('Background removed', before); };
+  $('[data-clear]').onclick = () => { const before = { ...S };
+    if (S.bgType === 'video') { if (S.anim) idbDel('wallpaper'); S.anim = null; }   // remove only the active backdrop; keep the other
+    else { S.bg = ''; S.bgUrl = ''; }
+    S.bgType = 'none'; commit(); undoable('Background removed', before); };
   $('[data-showurl]').onclick = () => { $('[data-urlrow]').classList.toggle('hide'); $('[data-urlinput]').value = S.bgUrl; $('[data-urlinput]').focus(); };
   $('[data-seturl]').onclick = () => { S.bgUrl = $('[data-urlinput]').value.trim(); S.bg = ''; S.bgType = 'image'; commit(); };
 
@@ -1136,14 +1252,30 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
     if (!ok) { S = before; toast("That image is too large to save. Try a smaller one."); return; }
     commit(true); toast('Background updated', 'Undo', () => { S = before; commit(); });
   }
-  $('[data-file]').onchange = e => { const f = e.target.files[0]; e.target.value = ''; useImageFile(f); };
+  const ANIM_MB = 60;
+  // An animated wallpaper (GIF or video). The file lives in the page's own storage; settings only note it's set.
+  async function useVideoFile(f) {
+    const isGif = f.type === 'image/gif', isVid = /^video\//.test(f.type);
+    if (!isGif && !isVid) { toast('That file isn’t a GIF or video.'); return; }
+    if (f.size > ANIM_MB * 1024 * 1024) { toast(`That file is too large (max ${ANIM_MB} MB). Try a shorter or smaller one.`); return; }
+    const before = { ...S }, beforeAnim = S.anim;
+    try { await idbPut('wallpaper', f); } catch (e) { toast("Couldn't save that file. Your Claude may be low on storage."); return; }
+    S.anim = { kind: isGif ? 'gif' : 'video', type: f.type, name: String(f.name || '').slice(0, 60), id: Date.now().toString(36), size: f.size };
+    S.bgType = 'video'; S.preset = '';   // keep any still image too, so switching back to Image doesn't lose it
+    save(); commit(true);
+    toast('Animated background set', 'Undo', () => { S = before; if (!beforeAnim) idbDel('wallpaper'); save(); commit(); });
+  }
+  // Pick the right handler for whatever file was dropped or chosen.
+  const useFile = f => { if (!f) return; if (/^video\//.test(f.type) || f.type === 'image/gif') useVideoFile(f); else useImageFile(f); };
+  $('[data-file]').onchange = e => { const f = e.target.files[0]; e.target.value = ''; useFile(f); };
   ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
-  drop.addEventListener('drop', e => useImageFile(e.dataTransfer.files[0]));
+  drop.addEventListener('drop', e => useFile(e.dataTransfer.files[0]));
 
   $('[data-export]').onclick = async () => {
-    const out = { ...S }; delete out.preset;
-    if (out.bg && out.bg.length > 1500000) delete out.bg;
+    const out = { ...S }; delete out.preset; delete out.anim;
+    if (out.bg && out.bg.length > 1500000) { delete out.bg; if (out.bgType === 'image') out.bgType = 'none'; }
+    if (out.bgType === 'video') out.bgType = out.bg ? 'image' : 'none';
     const text = 'CLAUDESTYLE:' + btoa(unescape(encodeURIComponent(JSON.stringify(out))));
     try { await navigator.clipboard.writeText(text); toast('Theme copied — paste it to a friend!'); }
     catch (e) { $('[data-importbox]').classList.remove('hide'); $('[data-importtext]').value = text; $('[data-importtext]').select(); toast('Press Ctrl+C to copy your theme.'); }
@@ -1154,6 +1286,7 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
     try {
       const raw = $('[data-importtext]').value.trim().replace(/^CLAUDESTYLE:/, '');
       const obj = JSON.parse(raw.startsWith('{') ? raw : decodeURIComponent(escape(atob(raw))));
+      delete obj.anim; if (obj.bgType === 'video') obj.bgType = obj.bg ? 'image' : 'none';   // a shared theme carries no animated file
       const before = { ...S };
       S = { ...DEF, ...obj, v: 2, on: true }; commit();
       $('[data-importbox]').classList.add('hide');
@@ -1487,6 +1620,9 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
     const a = document.adoptedStyleSheets;
     if (a[a.length - 1] !== sheet) document.adoptedStyleSheets = [...a.filter(x => x !== sheet), sheet]; // stay last so we win
     if (!cv.isConnected) de.appendChild(cv);
+    if (!vid.isConnected) de.appendChild(vid);
+    if (!gif.isConnected) de.appendChild(gif);
+    applyPerf();
     if (!host.isConnected) de.appendChild(host);
   }
   // Work is done when the page is idle, so typing, scrolling and replies streaming in stay smooth.
@@ -1533,12 +1669,12 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
   let missed = false;
   const mo = new MutationObserver(muts => {
     if (document.hidden) { missed = true; return; }   // Claude is minimised/hidden: catch up when it's back
-    for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1 && n !== tb && n !== sb && n !== cb && n !== host && n !== cv) added.add(n);
+    for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1 && n !== tb && n !== sb && n !== cb && n !== host && n !== cv && n !== vid && n !== gif) added.add(n);
     if (added.size && !addPending) { addPending = true; idle(checkAdded, 150); }
   });
   const observe = () => { if (document.body) mo.observe(document.body, { childList: true, subtree: true }); else setTimeout(observe, 50); };
   observe();
-  const onVis = () => { if (!document.hidden && missed) { missed = false; lastFull = performance.now(); idle(() => { mount(); mountToolbar(); sweep(); }, 300); } };
+  const onVis = () => { applyPerf(); if (!document.hidden && missed) { missed = false; lastFull = performance.now(); idle(() => { mount(); mountToolbar(); sweep(); }, 300); } };
   document.addEventListener('visibilitychange', onVis);
   addEventListener('load', () => { apply(); });
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { mount(); sweep(); });
@@ -1548,7 +1684,8 @@ button:focus-visible, .preset:focus-visible, .font:focus-visible { outline: 2px 
     clearInterval(tick); mo.disconnect(); document.removeEventListener('visibilitychange', onVis); clearTimeout(glassTimer); if (glassUrl) { URL.revokeObjectURL(glassUrl); glassUrl = ''; } removeEventListener('keydown', onKey, true); removeEventListener('scroll', onScroll, true);
     restoreAll();
     document.adoptedStyleSheets = document.adoptedStyleSheets.filter(x => x !== sheet);
-    [cv, host, tb, sb, cb].forEach(el => { if (el && el.isConnected) el.remove(); });
+    [cv, vid, gif, host, tb, sb, cb].forEach(el => { if (el && el.isConnected) el.remove(); });
+    try { vid.pause(); vid.removeAttribute('src'); vid.load(); } catch (e) {} clearAnimUrl();
     try { console.log('__claudestyle:btn:hidden'); } catch (e) {}
     delete window.__claudeMod;
   }

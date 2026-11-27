@@ -404,7 +404,7 @@ if ($Watch) {
       continue
     }
     if (-not $told -and ((Get-Date) - $seen).TotalSeconds -gt 12) {
-      Notify 'To use ClaudeStyle: in Claude open Developer > Enable Main Process Debugger.'
+      Notify 'Turn ClaudeStyle on: in Claude click the menu (top-left) > Developer > Enable Main Process Debugger. Claude turns this off each time it closes.'
       Log 'Watcher: debugger not on; reminded user'; $told = $true
     }
     Start-Sleep -Seconds 2
