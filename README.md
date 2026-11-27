@@ -54,7 +54,7 @@ Want the button somewhere else? Open the panel, go to **More**, and pick **Sideb
 ---
 
 ## 🎛️ Using the panel
-
+ 
 | Tab | What's there |
 |---|---|
 | **Themes** | One-click looks. Click one and you're done. Changed your mind? Click **Undo**. |
@@ -62,7 +62,7 @@ Want the button somewhere else? Open the panel, go to **More**, and pick **Sideb
 | **Style** | Panel colour, see-through amount, glass blur, **Dark popups**, **Smart glass**, **Message box** (background on/off, colour, strength), accent colour, and **Reduce effects**. |
 | **Text** | Pick a font. Each one shows a preview in its own style. |
 | **More** | Quick CSS, copy or paste themes, where the 🎨 button lives, turn off, debug info, and reset. |
-
+ 
 - **Move the panel:** drag it by its title.
 - **Resize the panel:** drag its bottom-right corner.
 - **Put it back:** double-click the title (position) or the corner (size).
